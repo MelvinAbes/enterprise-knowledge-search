@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enterprise-knowledge-search"
+version = "0.1.0"
+description = "A traceable document retrieval and question-answering service."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = "Apache-2.0"
+dependencies = [
+    "fastapi>=0.136,<1",
+    "pydantic-settings>=2.10,<3",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2,<3",
+    "mypy>=1.17,<2",
+    "pip-audit>=2.10,<3",
+    "pytest>=8.4,<10",
+    "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/knowledge_search"]
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "E4", "E7", "E9", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["knowledge_search"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+pretty = true
+show_error_codes = true
+warn_unreachable = true

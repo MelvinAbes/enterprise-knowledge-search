@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.python-version.local
+
+# Virtual environments and package tools
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Runtime data
+.cache/
+data/
+model-cache/
+uploads/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test and diagnostic output
+test-results/
+*.log
