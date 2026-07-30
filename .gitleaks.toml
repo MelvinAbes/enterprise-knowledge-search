@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated local dependencies, scanner cache, and runtime data"
+paths = [
+  '''(^|/)\.cache/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)data/''',
+]

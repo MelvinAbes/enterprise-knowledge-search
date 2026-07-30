@@ -1,6 +1,7 @@
 UV ?= uv
+TRIVY_IMAGE ?= aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
 
-.PHONY: sync format lint typecheck test test-unit test-integration check audit secret-scan migrate migration-check run worker seed evaluate
+.PHONY: sync format lint typecheck test test-unit test-integration check audit secret-scan migrate migration-check run worker compose-validate container-build container-scan compose-up compose-down smoke seed evaluate
 
 sync:
 	$(UV) sync --all-groups
@@ -45,10 +46,45 @@ run:
 		--port "$${EKS_PORT:-8000}"
 
 worker:
-	$(UV) run rq worker \
-		--url "$${EKS_REDIS_URL:-redis://127.0.0.1:6379/0}" \
-		--serializer json \
-		"$${EKS_INGESTION_QUEUE_NAME:-document-ingestion}"
+	$(UV) run python -m knowledge_search.worker.main
+
+compose-validate:
+	docker compose config --quiet
+
+container-build:
+	docker compose build
+
+container-scan:
+	mkdir -p .cache/trivy
+	docker run --rm \
+		--volume /var/run/docker.sock:/var/run/docker.sock \
+		--volume "$(CURDIR)/.cache/trivy:/root/.cache/" \
+		$(TRIVY_IMAGE) image --severity HIGH,CRITICAL --scanners vuln \
+		enterprise-knowledge-search:local
+	docker run --rm \
+		--volume /var/run/docker.sock:/var/run/docker.sock \
+		--volume "$(CURDIR)/.cache/trivy:/root/.cache/" \
+		$(TRIVY_IMAGE) image --severity HIGH,CRITICAL --scanners vuln \
+		enterprise-knowledge-search-postgres:local
+	docker run --rm \
+		--volume /var/run/docker.sock:/var/run/docker.sock \
+		--volume "$(CURDIR)/.cache/trivy:/root/.cache/" \
+		$(TRIVY_IMAGE) image --severity HIGH,CRITICAL --scanners vuln \
+		redis:7.2.15-alpine3.21@sha256:05a97a479bc73de66f087dc05b569010772880f778cc8671fa6b8aadee32e5c6
+	docker run --rm \
+		--volume /var/run/docker.sock:/var/run/docker.sock \
+		--volume "$(CURDIR)/.cache/trivy:/root/.cache/" \
+		$(TRIVY_IMAGE) image --severity HIGH,CRITICAL --scanners vuln \
+		enterprise-knowledge-search-qdrant:local
+
+compose-up:
+	docker compose up --build --wait
+
+compose-down:
+	docker compose down
+
+smoke:
+	$(UV) run python scripts/smoke_test.py
 
 seed:
 	$(UV) run python scripts/generate_demo_pdf.py
