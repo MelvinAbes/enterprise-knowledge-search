@@ -13,9 +13,11 @@ citations that identify the supporting document section.
 
 ## Current status
 
-The repository currently contains the approved architecture and a runnable FastAPI foundation.
-It exposes liveness and readiness endpoints with typed configuration. Document ingestion,
-retrieval, and the user interface will be added as tested vertical slices.
+The repository currently contains the approved architecture, a runnable FastAPI foundation,
+and the first PostgreSQL persistence slice. It includes document and ingestion lifecycles,
+deterministic chunk identities, relational repositories, and an Alembic migration with a
+generated lexical-search index. Document upload, vector retrieval, and the user interface will
+be added as tested vertical slices.
 
 ## Planned architecture
 
@@ -46,6 +48,7 @@ Prerequisites:
 - Python 3.13
 - [uv](https://docs.astral.sh/uv/)
 - GNU Make
+- Docker or another Testcontainers-compatible runtime
 
 Install dependencies and create local configuration:
 
@@ -60,6 +63,9 @@ Run all foundation checks:
 make check
 ```
 
+`make check` includes integration tests that start an isolated PostgreSQL container. Use
+`make test-unit` when a container runtime is unavailable.
+
 Start the API:
 
 ```bash
@@ -67,6 +73,13 @@ make run
 ```
 
 The interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+
+Apply migrations to the PostgreSQL instance configured by `EKS_DATABASE_URL`:
+
+```bash
+make migrate
+make migration-check
+```
 
 ## Example requests
 
@@ -108,9 +121,9 @@ The detailed design is in [docs/architecture.md](docs/architecture.md), with tra
 
 ## Limitations
 
-The current foundation does not ingest or search documents. The first implementation will
-support text-based PDFs only, use an English-focused local embedding model, store uploaded
-files locally, and operate as a single workspace without authentication.
+The current application does not yet expose document ingestion or search endpoints. The first
+implementation will support text-based PDFs only, use an English-focused local embedding
+model, store uploaded files locally, and operate as a single workspace without authentication.
 
 ## Roadmap
 

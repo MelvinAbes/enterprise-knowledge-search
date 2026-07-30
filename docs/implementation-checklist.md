@@ -12,14 +12,14 @@
 
 ## Ingestion
 
-- [ ] Add document, chunk, and ingestion-job models.
-- [ ] Add the initial PostgreSQL migration.
+- [x] Add document, chunk, and ingestion-job models.
+- [x] Add the initial PostgreSQL migration.
 - [ ] Validate streamed PDF, Markdown, and text uploads.
 - [ ] Implement safe local file storage and SHA-256 duplicate detection.
 - [ ] Implement format-specific extraction and normalization.
 - [ ] Implement fixed-window and section-aware chunking.
 - [ ] Queue jobs using identifier-only JSON payloads.
-- [ ] Add deterministic chunk identifiers and idempotent retries.
+- [x] Add deterministic chunk identifiers and idempotent lifecycle transitions.
 - [ ] Generate local embeddings and upsert Qdrant points.
 
 ## Retrieval and answers
@@ -41,7 +41,8 @@
 
 ## Quality and publication
 
-- [ ] Add integration tests for PostgreSQL, Qdrant, and Redis.
+- [x] Add real PostgreSQL migration and repository integration tests.
+- [ ] Add integration tests for Qdrant and Redis.
 - [ ] Add API smoke tests through Docker Compose.
 - [ ] Run dependency and container vulnerability scans.
 - [ ] Verify setup instructions in a clean environment.

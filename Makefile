@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: sync format lint typecheck test check audit secret-scan run
+.PHONY: sync format lint typecheck test test-unit test-integration check audit secret-scan migrate migration-check run
 
 sync:
 	$(UV) sync --all-groups
@@ -19,6 +19,12 @@ typecheck:
 test:
 	$(UV) run pytest
 
+test-unit:
+	$(UV) run pytest -m "not integration"
+
+test-integration:
+	$(UV) run pytest -m integration
+
 check: lint typecheck test
 
 audit:
@@ -26,6 +32,12 @@ audit:
 
 secret-scan:
 	gitleaks dir . --redact --no-banner
+
+migrate:
+	$(UV) run alembic upgrade head
+
+migration-check:
+	$(UV) run alembic check
 
 run:
 	$(UV) run uvicorn knowledge_search.main:app --reload \

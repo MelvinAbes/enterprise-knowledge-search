@@ -3,12 +3,19 @@ from pydantic import ValidationError
 
 from knowledge_search.config import Settings
 
+VALID_DATABASE_URL = "postgresql+psycopg://knowledge_search:test@localhost/knowledge_search"
+
 
 def test_settings_reject_unknown_environment() -> None:
     with pytest.raises(ValidationError):
-        Settings.model_validate({"environment": "staging"})
+        Settings.model_validate({"environment": "staging", "database_url": VALID_DATABASE_URL})
 
 
 def test_settings_reject_invalid_port() -> None:
     with pytest.raises(ValidationError):
-        Settings.model_validate({"port": 70_000})
+        Settings.model_validate({"port": 70_000, "database_url": VALID_DATABASE_URL})
+
+
+def test_settings_reject_non_psycopg_database_driver() -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate({"database_url": "postgresql://localhost/knowledge_search"})

@@ -61,6 +61,57 @@ flowchart TB
 Interfaces are introduced only for external systems or independently testable strategies.
 Domain services remain concrete.
 
+## Persisted domain model
+
+```mermaid
+erDiagram
+    DOCUMENTS ||--o{ CHUNKS : contains
+    DOCUMENTS ||--o{ INGESTION_JOBS : processes
+    CORPUS_REVISION {
+        smallint id PK
+        bigint revision
+        timestamptz updated_at
+    }
+    DOCUMENTS {
+        uuid id PK
+        string original_filename
+        string storage_key UK
+        string media_type
+        string sha256 UK
+        bigint size_bytes
+        string status
+        string failure_code
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    CHUNKS {
+        uuid id PK
+        uuid document_id FK
+        integer ordinal
+        text text
+        integer token_count
+        string content_hash
+        jsonb section_path
+        integer page_number
+        integer char_start
+        integer char_end
+        tsvector search_vector
+    }
+    INGESTION_JOBS {
+        uuid id PK
+        uuid document_id FK
+        string status
+        integer attempt_count
+        string failure_code
+        timestamptz started_at
+        timestamptz finished_at
+    }
+```
+
+Document and job state transitions are enforced in the domain layer and supported by database
+constraints. Chunk identifiers are derived from document identity, ordinal, and content hash,
+so indexing retries address the same relational and vector records.
+
 ## Document ingestion flow
 
 1. The API streams an allowed upload to a generated local path while computing SHA-256.
