@@ -1,31 +1,18 @@
 # Roadmap
 
-## Foundation
+## Delivered in the initial release
 
-- Typed application configuration and API lifecycle
-- Formatting, linting, static analysis, tests, and continuous integration
-- Architecture and requirements documentation
+- Typed FastAPI service, database migrations, and structured operational telemetry
+- Validated document ingestion with background extraction, chunking, embedding, and indexing
+- PostgreSQL lexical search, Qdrant vector search, reciprocal-rank fusion, and citations
+- Optional grounded answer generation with search-only operation as the default
+- Browser interface, project-authored evaluation corpus, and reproducible retrieval metrics
+- Non-root container environment, clean-start smoke test, CI, dependency audit, and secret scan
 
-## Document ingestion
+## Next
 
-- Validated PDF, Markdown, and text uploads
-- Extraction, normalization, configurable chunking, and duplicate detection
-- Background indexing with retryable document states
-
-## Retrieval and answers
-
-- PostgreSQL full-text and Qdrant vector retrieval
-- Reciprocal-rank fusion, filtering, and source citations
-- Optional locally hosted answer generation
-
-## Interface and evaluation
-
-- Document upload, status, and search views
-- Project-authored evaluation corpus and relevance judgements
-- Reproducible retrieval metrics and failure analysis
-
-## Delivery quality
-
-- Containerized local environment and API smoke tests
-- Dependency, image, and secret checks
-- Verified documentation and screenshots from the running application
+- Add OCR and table-aware extraction while preserving page-level citation coordinates.
+- Add an operator reconciliation command for partial relational/vector-store failures.
+- Expand relevance judgments and evaluate rerankers and multilingual embedding models.
+- Add authentication, workspace isolation, object storage, and rate limiting before any
+  untrusted deployment.

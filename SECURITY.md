@@ -23,5 +23,8 @@ development snapshots are not maintained as separate release lines.
 - Logs must not contain document text, credentials, or authorization values.
 - Dependency and secret scans are part of the verification workflow.
 
+The latest local scan observations and remaining upstream findings are recorded in
+[`docs/verification.md`](docs/verification.md).
+
 The service is not ready for untrusted public access until authentication, authorization, rate
 limiting, malware scanning, and storage isolation are implemented.

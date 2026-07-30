@@ -1,29 +1,33 @@
 # Enterprise Knowledge Search
 
-Enterprise Knowledge Search is a document retrieval and question-answering service for
-technical and operational knowledge. The project focuses on traceable search results,
-explicit retrieval behaviour, and local development without paid service credentials.
+Enterprise Knowledge Search is a local-first document retrieval and question-answering
+service for technical and operational knowledge. It combines PostgreSQL full-text search with
+Qdrant vector search, returns section- and page-aware citations, and remains useful when answer
+generation is disabled.
+
+![Hybrid search results showing a cited policy passage](docs/images/search-results.jpg)
+
+The same interface also has a verified
+[mobile layout](docs/images/mobile-layout.jpg) without a separate front-end build.
 
 ## Problem
 
-Useful information is often distributed across PDF, Markdown, and text files. Basic keyword
-search misses related terminology, while ungrounded generated answers make it difficult to
-verify a result. This service is designed to combine lexical and semantic retrieval and return
-citations that identify the supporting document section.
+Operational knowledge often lives across PDF, Markdown, and text files. Exact keyword search
+misses related terminology, while an answer without its evidence is difficult to trust. This
+service treats retrieval and citations as the core product: users can compare lexical,
+semantic, and hybrid results and inspect the passage behind each result.
 
-## Current status
+## Features
 
-The current implementation accepts validated PDF, Markdown, and text uploads, rejects duplicate
-content, and queues ingestion through Redis. A worker extracts and normalizes content, applies
-the configured chunking strategy, generates local embeddings, writes vectors to Qdrant, and
-stores citation metadata and lexical-search vectors in PostgreSQL. Document and job status
-endpoints expose each lifecycle transition. Keyword, vector, and hybrid search return source
-citations. A disabled-by-default answer endpoint can call a configured chat-completions HTTP
-service while preserving the underlying sources. Search responses are cached in Redis against
-the current corpus revision, and the API exposes structured request logs, correlation IDs, and
-Prometheus metrics. Recoverable deletion removes vectors, stored files, and relational
-metadata. A server-rendered browser interface covers upload, status polling, search, optional
-answers, source inspection, and deletion without a separate front-end build.
+- Validated PDF, Markdown, and text uploads with streamed storage and duplicate detection
+- Background extraction, normalization, configurable chunking, embedding, and indexing
+- PostgreSQL metadata and full-text search, Qdrant vector search, and reciprocal-rank fusion
+- Citations containing the source file, heading path, page number, and stable chunk identifier
+- Revision-aware Redis caching and recoverable document deletion
+- No-generation search mode plus an optional configurable answer-provider interface
+- Structured JSON logs, request IDs, Prometheus metrics, liveness, and dependency readiness
+- Browser interface, OpenAPI documentation, database migrations, and original demonstration data
+- Reproducible Recall@k, MRR, and NDCG evaluation
 
 ## Architecture
 
@@ -33,81 +37,68 @@ flowchart LR
     API --> PostgreSQL["PostgreSQL metadata and lexical search"]
     API --> Redis["Redis cache and job queue"]
     Redis --> Worker["Ingestion worker"]
-    Worker --> PostgreSQL
-    Worker --> Embeddings["Local embedding provider"]
-    Embeddings --> Qdrant["Qdrant vector search"]
+    Worker --> Extract["Extract, normalize, and chunk"]
+    Extract --> Embeddings["Local embedding adapter"]
+    Extract --> PostgreSQL
+    Embeddings --> Qdrant["Qdrant vector index"]
     API --> Qdrant
-    PostgreSQL --> Ranking["Hybrid ranking"]
-    Qdrant --> Ranking
-    Ranking --> Citations["Search results with citations"]
+    PostgreSQL --> Fusion["Reciprocal-rank fusion"]
+    Qdrant --> Fusion
+    Fusion --> Citations["Ranked passages with citations"]
     Citations --> Client
+    Citations --> Answers["Optional grounded answer adapter"]
 ```
 
-PostgreSQL will remain the source of truth. Qdrant will store dense vectors referenced by
-stable chunk identifiers. Reciprocal-rank fusion will combine lexical and vector result lists
-without treating their raw scores as directly comparable.
+PostgreSQL is authoritative for document state and chunk metadata. Qdrant is a derived index
+addressed with deterministic chunk identifiers. The ingestion, retrieval, ranking, and answer
+generation modules have separate responsibilities; external providers are behind narrow ports.
+See [docs/architecture.md](docs/architecture.md) for the detailed flow.
 
 ## Local setup
 
 Prerequisites:
 
+- Docker with Compose
 - Python 3.13
 - [uv](https://docs.astral.sh/uv/)
 - GNU Make
-- Docker or another Testcontainers-compatible runtime
 
-Install dependencies and create local configuration:
+Create local configuration and replace the example PostgreSQL password:
 
 ```bash
-make sync
 cp .env.example .env
+make sync
 ```
 
-Run all foundation checks:
+Start the complete environment and load the five project-authored sample documents:
 
 ```bash
-make check
+make compose-up
+make seed
+make smoke
 ```
 
-`make check` includes integration tests that start isolated PostgreSQL and Redis containers.
-Use `make test-unit` when a container runtime is unavailable.
+The first semantic ingestion downloads the configured embedding model into a persistent local
+volume. No paid credentials are required. The main endpoints are:
 
-Start the API:
+- Interface: `http://127.0.0.1:8000`
+- OpenAPI: `http://127.0.0.1:8000/docs`
+- Readiness: `http://127.0.0.1:8000/health/ready`
+- Metrics: `http://127.0.0.1:8000/metrics`
+
+Stop the services without removing their data:
 
 ```bash
-make run
+make compose-down
 ```
 
-Start the ingestion worker in another terminal:
+For native development, update both `POSTGRES_PASSWORD` and the password inside
+`EKS_DATABASE_URL`, start PostgreSQL, Redis, and Qdrant, then run `make migrate`, `make worker`,
+and `make run`.
 
-```bash
-make worker
-```
+## Example API requests
 
-The interactive API documentation is available at `http://127.0.0.1:8000/docs`.
-
-Apply migrations to the PostgreSQL instance configured by `EKS_DATABASE_URL`:
-
-```bash
-make migrate
-make migration-check
-```
-
-## Example requests
-
-Liveness:
-
-```bash
-curl http://127.0.0.1:8000/health/live
-```
-
-Expected response:
-
-```json
-{"status":"ok"}
-```
-
-Readiness:
+Check readiness:
 
 ```bash
 curl http://127.0.0.1:8000/health/ready
@@ -134,49 +125,60 @@ curl --request POST \
   --form 'document=@docs/requirements.md;type=text/markdown'
 ```
 
-The API returns `202 Accepted` with the queued document and ingestion-job identifiers:
+The API returns `202 Accepted` with a queued document and ingestion job:
 
 ```json
 {
   "document": {
     "id": "927de0ef-4454-4742-91d5-d8d46d5b604a",
     "original_filename": "requirements.md",
-    "media_type": "text/markdown",
-    "size_bytes": 3186,
-    "status": "queued",
-    "failure_code": null,
-    "created_at": "2026-07-30T16:00:00Z",
-    "updated_at": "2026-07-30T16:00:00Z"
+    "status": "queued"
   },
   "ingestion_job": {
     "id": "30cf997a-9818-449b-bf72-d745fc62252e",
-    "document_id": "927de0ef-4454-4742-91d5-d8d46d5b604a",
     "status": "queued",
-    "attempt_count": 0,
-    "failure_code": null,
-    "created_at": "2026-07-30T16:00:00Z",
-    "updated_at": "2026-07-30T16:00:00Z",
-    "started_at": null,
-    "finished_at": null
+    "attempt_count": 0
   }
 }
 ```
 
-Search the ready corpus with reciprocal-rank fusion:
+Search the ready corpus:
 
 ```bash
 curl --get \
   --url http://127.0.0.1:8000/api/v1/search \
-  --data-urlencode 'q=How long are backups retained?' \
+  --data-urlencode 'q=When does temporary privileged access expire?' \
   --data 'mode=hybrid' \
-  --data 'limit=5'
+  --data 'limit=1'
 ```
 
-Use `mode=keyword` to search without loading the embedding model. Results contain the source
-document, chunk, section path, page number when available, and the ranks contributed by each
-retriever.
+A result includes its retrieval contributions and citation:
 
-Ask a question while generation is disabled:
+```json
+{
+  "query": "When does temporary privileged access expire?",
+  "mode": "hybrid",
+  "items": [
+    {
+      "score": 0.03278688524590164,
+      "keyword_rank": 1,
+      "vector_rank": 1,
+      "media_type": "text/markdown",
+      "citation": {
+        "original_filename": "access-control-policy.md",
+        "section_path": ["Access Control Policy", "Privileged Access"],
+        "page_number": null,
+        "excerpt": "Temporary elevation ... expires automatically after eight hours."
+      }
+    }
+  ]
+}
+```
+
+Use `mode=keyword` to search without embedding the query. `mode=vector` uses semantic search
+only. `mode=hybrid` fuses both ranked candidate lists.
+
+Ask for an answer while generation is disabled:
 
 ```bash
 curl --request POST \
@@ -185,81 +187,69 @@ curl --request POST \
   --data '{"question":"How long are backups retained?","mode":"hybrid","limit":5}'
 ```
 
-The response contains `generation_status: "disabled"`, a null answer, and the retrieved
-sources. Set `EKS_ANSWER_PROVIDER=chat_http` to use a compatible local or remote service.
-`EKS_ANSWER_API_TOKEN` is optional and must remain outside version control.
+The response has `generation_status: "disabled"`, a null answer, and the retrieved sources.
+Set `EKS_ANSWER_PROVIDER=chat_http` to use a compatible local or explicitly configured remote
+service. Search continues to work if that provider is unavailable.
 
-Request metrics are available for local monitoring:
+## Evaluation
 
-```bash
-curl http://127.0.0.1:8000/metrics
-```
-
-Every API response includes an `X-Request-ID`. A valid UUID supplied in the same request header
-is preserved, which makes it possible to correlate a client operation with the structured log
-event without logging query strings or document contents.
-
-Delete a ready or failed document:
+The repository contains five original documents and eight graded queries. Run:
 
 ```bash
-curl --request DELETE \
-  http://127.0.0.1:8000/api/v1/documents/927de0ef-4454-4742-91d5-d8d46d5b604a
+MODE=hybrid LIMIT=5 make evaluate
 ```
 
-Deletion returns `204 No Content`. Queued and processing documents return `409 Conflict` so an
-active ingestion cannot be removed underneath its worker.
-
-## Retrieval evaluation
-
-The repository includes five original demonstration documents and eight graded queries. Source
-locations—not generated chunk identifiers—define relevance, so the judgments remain stable
-when the corpus is ingested again.
-
-With the API and worker running:
-
-```bash
-make seed
-make evaluate
-```
-
-`make evaluate` measures Recall@5, reciprocal rank, and NDCG@5 from live search responses.
-Override `MODE` and `LIMIT` to compare retrieval configurations:
-
-```bash
-MODE=keyword LIMIT=10 make evaluate
-```
-
-The command prints the aggregate and per-query observations as JSON. This repository does not
-commit a benchmark result before the complete container environment has reproduced it.
+The command evaluates live API responses with Recall@5, MRR, and NDCG@5. The measured local
+results and their boundaries are recorded in
+[docs/evaluation-results.md](docs/evaluation-results.md); they are a regression diagnostic for
+this small corpus, not a deployment benchmark.
 
 ## Technology and design decisions
 
-- FastAPI and Pydantic provide typed HTTP and configuration boundaries.
-- PostgreSQL will provide transactional metadata storage and full-text retrieval.
-- Qdrant will provide dense-vector retrieval.
-- Redis supports background ingestion and revision-aware caching.
-- Structlog and Prometheus client instrumentation provide JSON logs and request metrics.
-- Answer generation will be optional and disabled by default.
-- The web interface will use server-rendered HTML and small local JavaScript modules.
+- FastAPI and Pydantic define typed HTTP and configuration boundaries.
+- PostgreSQL provides transactions, lifecycle state, citation metadata, and lexical retrieval.
+- Qdrant provides dense-vector retrieval; Redis provides the queue and revision-aware cache.
+- FastEmbed runs the default English BGE model locally through ONNX.
+- RQ keeps the background workflow small while supporting retries and scheduled retry handling.
+- Jinja, local CSS, and small JavaScript modules avoid a separate front-end toolchain.
+- Multi-stage, non-root, read-only images minimize runtime contents and permissions.
 
-The detailed design is in [docs/architecture.md](docs/architecture.md), with trade-offs in
-[docs/design-decisions.md](docs/design-decisions.md).
+Trade-offs are recorded in [docs/design-decisions.md](docs/design-decisions.md). Resolved
+dependencies and licence considerations are in [docs/dependencies.md](docs/dependencies.md).
+
+## Quality checks
+
+```bash
+make format
+make check
+make audit
+make container-build
+make container-scan
+make secret-scan
+```
+
+Integration tests use isolated PostgreSQL and Redis containers. Container scan observations,
+including the remaining upstream Qdrant findings, are documented in
+[docs/verification.md](docs/verification.md).
 
 ## Limitations
 
-The application supports text-based PDFs only, uses an English-focused local embedding model,
-stores uploaded files locally, and operates as a single workspace without authentication. The
-interface does not provide bulk operations or user-specific collections. A failure while
-initially dispatching a job is retained for diagnosis but currently requires operator
-intervention to requeue. Retrieval and generated-answer quality have not yet been evaluated
-as a deployment claim; the included dataset and command are intended to make those measurements
-reproducible in the local environment.
+- Text-based PDFs are supported; scanned documents require OCR before upload.
+- The default embedding model is English-focused and the evaluation corpus is intentionally small.
+- Uploaded files use a local volume rather than object storage.
+- The service is a single workspace without authentication, authorization, quotas, or rate limits.
+- Reconciliation is idempotent at job boundaries but there is no distributed transaction between
+  PostgreSQL and Qdrant.
+- Optional answers depend on the quality and availability of the configured provider.
+- The system has not been load-tested and makes no throughput or scale claim.
 
-## Roadmap
+## Future improvements
 
-The short project roadmap is maintained in [ROADMAP.md](ROADMAP.md). Work proceeds through
-ingestion, retrieval, grounded answers, interface development, evaluation, and operational
-verification.
+- Add OCR and table-aware extraction with citation-preserving page coordinates.
+- Add tenant-aware authorization, rate limiting, and object-storage isolation.
+- Expand relevance judgments and compare reranking strategies on multilingual corpora.
+
+The shorter delivery roadmap is in [ROADMAP.md](ROADMAP.md).
 
 ## Licence
 

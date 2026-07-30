@@ -16,6 +16,14 @@ Start the development server with:
 make run
 ```
 
+For the complete local environment:
+
+```bash
+make compose-up
+make seed
+make smoke
+```
+
 ## Change guidelines
 
 - Keep changes focused on one coherent behaviour.
@@ -30,6 +38,8 @@ Before opening a change for review, run:
 make format
 make check
 make audit
+make container-build
+make container-scan
 make secret-scan
 ```
 

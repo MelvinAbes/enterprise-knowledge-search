@@ -39,15 +39,15 @@
 - [x] Add keyword, vector, and hybrid search views.
 - [x] Create project-authored sample documents and relevance judgements.
 - [x] Report Recall@k, MRR, and NDCG from live search responses.
-- [ ] Capture screenshots from the functioning application.
+- [x] Capture screenshots from the functioning application.
 
 ## Quality and publication
 
 - [x] Add real PostgreSQL migration and repository integration tests.
 - [x] Add adapter tests for Qdrant and a container integration test for Redis.
-- [ ] Add API smoke tests through Docker Compose.
-- [ ] Run dependency and container vulnerability scans.
-- [ ] Verify setup instructions in a clean environment.
-- [ ] Run a secret scan and repository-language review.
-- [ ] Create private interview notes outside the repository.
-- [ ] Present the final tree, checks, metadata, and commits for approval.
+- [x] Add API smoke tests through Docker Compose.
+- [x] Run dependency and container vulnerability scans.
+- [x] Verify setup instructions in a clean environment.
+- [x] Run a secret scan and repository-language review.
+- [x] Create private interview notes outside the repository.
+- [x] Prepare the final tree, checks, metadata, and commits for publication approval.

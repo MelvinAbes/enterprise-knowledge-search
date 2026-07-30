@@ -12,8 +12,9 @@ stable chunk identifiers, and only ready documents can appear in results.
 ## Reciprocal-rank fusion
 
 PostgreSQL text-rank values and vector similarity values have different distributions. Hybrid
-ranking will combine their result positions using reciprocal-rank fusion instead of assigning
-an arbitrary shared scale. Evaluation data will later determine weights and candidate limits.
+ranking combines their result positions using reciprocal-rank fusion instead of assigning an
+arbitrary shared scale. The candidate multiplier and fusion constant remain configurable for
+evaluation.
 
 ## Background ingestion
 
@@ -51,12 +52,23 @@ of the search endpoint.
 
 ## Minimal server-rendered interface
 
-The interface will use Jinja templates, local CSS, and small JavaScript modules. This provides a
+The interface uses Jinja templates, local CSS, and small JavaScript modules. This provides a
 usable upload and search experience without introducing a second package manager or a separate
 front-end deployment.
 
 ## Local file storage
 
-Uploaded files will initially be stored in a generated local data directory. A narrow storage
+Uploaded files are stored in a generated local data directory. A narrow storage
 interface supports isolated tests and leaves room for object storage later. Object-storage
 support itself is not part of the first release.
+
+## Minimal runtime images
+
+Build tooling stays in multi-stage builder images. The application runtime copies only Python,
+the locked virtual environment, required shared libraries, migrations, and packaged
+application code into a non-root distroless image. Qdrant follows the same pattern using its
+official release binary and configuration, without the unused administration UI.
+
+PostgreSQL runs its official entrypoint directly as the `postgres` user, and Redis uses a
+pinned Alpine image. This makes the local environment less convenient to debug from inside a
+container, but reduces runtime packages and avoids granting a service a shell it does not need.

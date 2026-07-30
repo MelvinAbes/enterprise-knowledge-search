@@ -42,7 +42,7 @@ flowchart TB
     Citation --> AnswerAPI
     AnswerAPI --> GenerationPort["Answer-generation interface"]
     GenerationPort --> Disabled["Disabled adapter"]
-    GenerationPort --> LocalModel["Optional local model adapter"]
+    GenerationPort --> ChatHTTP["Optional chat HTTP adapter"]
 
     SearchAPI --> Cache["Redis cache"]
 ```
@@ -142,25 +142,28 @@ revision.
 
 PostgreSQL is authoritative, while Qdrant is a derived index. There is no distributed
 transaction between them. A document becomes searchable only after relational chunks and
-vectors have been written successfully. Stable chunk identifiers, explicit document states,
-and a reconciliation command make partial failures recoverable.
+vectors have been written successfully. Stable chunk identifiers and explicit document states
+make a repeated ingestion job idempotent.
 
 Deletion first marks a document unavailable to queries. Vector deletion and stored-file
 cleanup can then be retried without exposing partially deleted content.
 
 ## Deployment model
 
-The local Compose environment will contain:
+The local Compose environment contains:
 
 - API process
 - ingestion worker
 - PostgreSQL
 - Qdrant
 - Redis
-- optional local model service under a separate profile
+- a one-shot migration process
 
-The API and worker use the same application image but different commands. Persistent volumes
-hold database, vector, model, and uploaded-file data.
+The API, worker, and migration process use the same minimal application image with different
+commands. The application and Qdrant images use distroless runtime stages, fixed non-root user
+identities, and no shell. Compose mounts the application containers read-only and supplies
+writable volumes only for uploaded documents and the embedding-model cache. PostgreSQL, Redis,
+Qdrant, model, and uploaded-file data use separate persistent volumes.
 
 ## Security boundary
 

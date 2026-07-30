@@ -1,7 +1,7 @@
 # External Dependencies and Licences
 
-The application is licensed under Apache-2.0. Exact package versions will be recorded in
-`uv.lock` as each implementation slice is added.
+The application is licensed under Apache-2.0. Exact Python versions and hashes are recorded in
+`uv.lock`. Container bases and services use immutable image digests.
 
 ## Runtime dependencies
 
@@ -26,8 +26,10 @@ The application is licensed under Apache-2.0. Exact package versions will be rec
 | prometheus-client | Request and worker metrics | Apache-2.0 |
 | Jinja2 | Server-rendered interface | BSD-3-Clause |
 
-Redis and Qdrant run as unmodified external services. The repository will reference their
-upstream container images rather than redistributing modified service source.
+The Compose environment uses PostgreSQL 17.10, Redis 7.2.15, and Qdrant 1.18.3. PostgreSQL
+receives current Alpine package updates and runs directly as its service user. The Qdrant
+runtime copies the official release binary, configuration, and software bill of materials into
+a minimal non-root image; its separate administration UI is not included.
 
 ## Development dependencies
 
@@ -41,6 +43,6 @@ upstream container images rather than redistributing modified service source.
 | Gitleaks | Secret scanning before pushes |
 | Trivy | Container image vulnerability checks |
 
-Before publication, resolved Python licences will be reviewed from the lock file and container
-images will be pinned to explicit versions. Demonstration documents and relevance judgements
-will be project-authored and covered by the repository licence.
+Resolved Python licences were reviewed from the lock file, and container sources are pinned to
+explicit versions and digests. Demonstration documents and relevance judgments are
+project-authored and covered by the repository licence.
