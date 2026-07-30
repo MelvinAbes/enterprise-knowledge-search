@@ -19,7 +19,9 @@ the configured chunking strategy, generates local embeddings, writes vectors to 
 stores citation metadata and lexical-search vectors in PostgreSQL. Document and job status
 endpoints expose each lifecycle transition. Keyword, vector, and hybrid search return source
 citations. A disabled-by-default answer endpoint can call a configured chat-completions HTTP
-service while preserving the underlying sources. The user interface remains in progress.
+service while preserving the underlying sources. Search responses are cached in Redis against
+the current corpus revision, and the API exposes structured request logs, correlation IDs, and
+Prometheus metrics. The user interface remains in progress.
 
 ## Architecture
 
@@ -185,12 +187,23 @@ The response contains `generation_status: "disabled"`, a null answer, and the re
 sources. Set `EKS_ANSWER_PROVIDER=chat_http` to use a compatible local or remote service.
 `EKS_ANSWER_API_TOKEN` is optional and must remain outside version control.
 
+Request metrics are available for local monitoring:
+
+```bash
+curl http://127.0.0.1:8000/metrics
+```
+
+Every API response includes an `X-Request-ID`. A valid UUID supplied in the same request header
+is preserved, which makes it possible to correlate a client operation with the structured log
+event without logging query strings or document contents.
+
 ## Technology and design decisions
 
 - FastAPI and Pydantic provide typed HTTP and configuration boundaries.
 - PostgreSQL will provide transactional metadata storage and full-text retrieval.
 - Qdrant will provide dense-vector retrieval.
-- Redis will support background ingestion and revision-aware caching.
+- Redis supports background ingestion and revision-aware caching.
+- Structlog and Prometheus client instrumentation provide JSON logs and request metrics.
 - Answer generation will be optional and disabled by default.
 - The web interface will use server-rendered HTML and small local JavaScript modules.
 

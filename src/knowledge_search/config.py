@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     model_cache_path: Path = Path("model-cache")
     retrieval_candidate_multiplier: int = Field(default=4, ge=1, le=20)
     hybrid_rrf_k: int = Field(default=60, ge=1, le=1_000)
+    search_cache_ttl_seconds: int = Field(default=300, ge=0, le=86_400)
     answer_provider: AnswerProviderName = "disabled"
     answer_base_url: AnyHttpUrl = AnyHttpUrl("http://127.0.0.1:11434/v1")
     answer_model: str = Field(default="qwen2.5:3b", min_length=1)

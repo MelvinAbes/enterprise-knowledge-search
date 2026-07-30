@@ -114,6 +114,12 @@ class SqlAlchemyCorpusRevisionRepository:
         record.revision += 1
         return record.revision
 
+    def current(self) -> int:
+        record = self._session.get(CorpusRevisionRecord, 1)
+        if record is None:
+            raise LookupError("corpus revision singleton does not exist")
+        return record.revision
+
 
 def _document_to_record(document: Document) -> DocumentRecord:
     return DocumentRecord(

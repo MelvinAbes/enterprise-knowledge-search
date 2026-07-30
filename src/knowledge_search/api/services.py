@@ -12,6 +12,7 @@ from knowledge_search.application import (
     SearchExecution,
     SearchService,
 )
+from knowledge_search.application.cache import CachedSearchService
 from knowledge_search.config import Settings
 from knowledge_search.domain import Document, IngestionJob
 from knowledge_search.generation import (
@@ -20,12 +21,17 @@ from knowledge_search.generation import (
 )
 from knowledge_search.generation.ports import AnswerGenerator
 from knowledge_search.ingestion.ports import IngestionQueue
-from knowledge_search.persistence import PostgresSearchRepository, PostgresSessionFactory
+from knowledge_search.persistence import (
+    PostgresCorpusRevisionProvider,
+    PostgresSearchRepository,
+    PostgresSessionFactory,
+)
 from knowledge_search.providers import (
     FastEmbedProvider,
     LocalDocumentStore,
     QdrantVectorIndex,
     RedisIngestionQueue,
+    RedisSearchResultCache,
 )
 from knowledge_search.retrieval import SearchFilters, SearchMode
 
@@ -138,12 +144,18 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
         dimensions=settings.embedding_dimensions,
         cache_path=settings.model_cache_path,
     )
-    search = SearchService(
+    uncached_search = SearchService(
         repository=PostgresSearchRepository(sessions),
         embeddings=embeddings,
         vector_index=vector_index,
         candidate_multiplier=settings.retrieval_candidate_multiplier,
         rrf_k=settings.hybrid_rrf_k,
+    )
+    search = CachedSearchService(
+        search=uncached_search,
+        cache=RedisSearchResultCache(redis_url=settings.redis_url),
+        corpus_revision=PostgresCorpusRevisionProvider(sessions),
+        ttl_seconds=settings.search_cache_ttl_seconds,
     )
     generator: AnswerGenerator
     if settings.answer_provider == "disabled":

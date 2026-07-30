@@ -15,6 +15,7 @@ dependencies = [
     "fastapi>=0.136,<1",
     "httpx>=0.28,<1",
     "markdown-it-py>=4.0,<5",
+    "prometheus-client>=0.23,<1",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.10,<3",
     "pypdf>=6.0,<7",
@@ -23,6 +24,7 @@ dependencies = [
     "redis>=6.4,<8",
     "rq>=2.6,<3",
     "sqlalchemy>=2.0,<3",
+    "structlog>=25.4,<26",
     "uvicorn[standard]>=0.35,<1",
 ]
 

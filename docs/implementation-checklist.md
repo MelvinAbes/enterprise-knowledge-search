@@ -8,7 +8,7 @@
 - [x] Initialize typed FastAPI application.
 - [x] Configure formatting, linting, static analysis, tests, and continuous integration.
 - [x] Add structured problem-detail error responses.
-- [ ] Add request correlation and structured logging.
+- [x] Add request correlation and structured logging.
 
 ## Ingestion
 
@@ -29,7 +29,7 @@
 - [x] Implement Qdrant vector search.
 - [x] Implement reciprocal-rank fusion and filters.
 - [x] Assemble document, section, page, and chunk citations.
-- [ ] Add revision-aware query and result caching.
+- [x] Add revision-aware query and result caching.
 - [x] Add disabled and configurable HTTP answer-generation adapters.
 
 ## Interface and evaluation
