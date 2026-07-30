@@ -22,7 +22,8 @@ citations. A disabled-by-default answer endpoint can call a configured chat-comp
 service while preserving the underlying sources. Search responses are cached in Redis against
 the current corpus revision, and the API exposes structured request logs, correlation IDs, and
 Prometheus metrics. Recoverable deletion removes vectors, stored files, and relational
-metadata. The user interface remains in progress.
+metadata. A server-rendered browser interface covers upload, status polling, search, optional
+answers, source inspection, and deletion without a separate front-end build.
 
 ## Architecture
 
@@ -223,12 +224,12 @@ The detailed design is in [docs/architecture.md](docs/architecture.md), with tra
 
 ## Limitations
 
-The application does not yet expose deletion or browser-interface workflows. It supports
-text-based PDFs only, uses an English-focused local embedding model, stores uploaded files
-locally, and operates as a single workspace without authentication. A failure while initially
-dispatching a job is retained for diagnosis but currently requires operator intervention to
-requeue. Retrieval and generated-answer quality have not yet been evaluated against the
-planned relevance dataset.
+The application supports text-based PDFs only, uses an English-focused local embedding model,
+stores uploaded files locally, and operates as a single workspace without authentication. The
+interface does not provide bulk operations or user-specific collections. A failure while
+initially dispatching a job is retained for diagnosis but currently requires operator
+intervention to requeue. Retrieval and generated-answer quality have not yet been evaluated
+against the planned relevance dataset.
 
 ## Roadmap
 

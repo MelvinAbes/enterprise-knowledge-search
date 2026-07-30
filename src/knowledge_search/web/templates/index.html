@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Search and inspect a locally managed technical knowledge corpus."
+    >
+    <title>Enterprise Knowledge Search</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body data-api-prefix="{{ api_prefix }}">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Enterprise Knowledge Search home">
+        <span class="brand-mark" aria-hidden="true">EK</span>
+        <span>
+          <strong>Enterprise Knowledge Search</strong>
+          <small>Traceable retrieval for technical documents</small>
+        </span>
+      </a>
+      <div class="system-state" id="system-state" aria-live="polite">
+        <span class="state-dot"></span>
+        Checking services
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Local knowledge workspace</p>
+          <h1>Find the source,<br>not just an answer.</h1>
+          <p class="hero-copy">
+            Upload operational documents, compare lexical and semantic retrieval,
+            and inspect the exact passages behind every result.
+          </p>
+        </div>
+        <form class="upload-card" id="upload-form">
+          <div>
+            <p class="card-label">Add to the corpus</p>
+            <h2>Upload a document</h2>
+            <p>PDF, Markdown, or plain text. Maximum size follows server configuration.</p>
+          </div>
+          <label class="file-picker">
+            <input
+              id="document-file"
+              name="document"
+              type="file"
+              accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"
+              required
+            >
+            <span id="file-label">Choose a source file</span>
+          </label>
+          <button class="primary-button" type="submit">Upload and index</button>
+          <p class="form-message" id="upload-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="workspace" aria-labelledby="search-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Retrieval workspace</p>
+            <h2 id="search-heading">Search the indexed corpus</h2>
+          </div>
+          <span class="document-count" id="document-count">0 ready documents</span>
+        </div>
+
+        <form class="search-form" id="search-form">
+          <label class="search-field">
+            <span class="visually-hidden">Search query</span>
+            <input
+              id="search-query"
+              name="q"
+              type="search"
+              maxlength="500"
+              placeholder="Ask about a policy, system, or procedure"
+              required
+            >
+          </label>
+          <label>
+            <span class="visually-hidden">Retrieval mode</span>
+            <select id="search-mode" name="mode">
+              <option value="hybrid">Hybrid</option>
+              <option value="keyword">Keyword</option>
+              <option value="vector">Vector</option>
+            </select>
+          </label>
+          <button class="primary-button" type="submit">Search</button>
+          <button class="secondary-button" id="answer-button" type="button">
+            Search + answer
+          </button>
+        </form>
+
+        <div class="answer-panel" id="answer-panel" hidden>
+          <div class="answer-heading">
+            <span>Answer</span>
+            <span class="status-pill" id="generation-status"></span>
+          </div>
+          <p id="answer-text"></p>
+        </div>
+
+        <div class="results-meta" id="results-meta" aria-live="polite">
+          Enter a query to inspect ranked passages.
+        </div>
+        <div class="results" id="results"></div>
+      </section>
+
+      <section class="corpus" aria-labelledby="corpus-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Corpus</p>
+            <h2 id="corpus-heading">Document lifecycle</h2>
+          </div>
+          <button class="text-button" id="refresh-documents" type="button">Refresh</button>
+        </div>
+        <div class="document-list" id="document-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <template id="result-template">
+      <article class="result-card">
+        <div class="result-topline">
+          <span class="result-position"></span>
+          <span class="result-score"></span>
+        </div>
+        <h3 class="result-file"></h3>
+        <p class="result-location"></p>
+        <blockquote class="result-excerpt"></blockquote>
+        <div class="rank-details"></div>
+      </article>
+    </template>
+
+    <template id="document-template">
+      <article class="document-row">
+        <div class="file-icon" aria-hidden="true"></div>
+        <div class="document-main">
+          <h3 class="document-name"></h3>
+          <p class="document-meta"></p>
+        </div>
+        <span class="status-pill document-status"></span>
+        <button class="delete-button" type="button">Delete</button>
+      </article>
+    </template>
+
+    <footer>
+      <span>Search works independently of answer generation.</span>
+      <a href="/docs">API documentation</a>
+    </footer>
+  </body>
+</html>

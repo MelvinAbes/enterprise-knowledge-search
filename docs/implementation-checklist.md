@@ -35,8 +35,8 @@
 
 ## Interface and evaluation
 
-- [ ] Add document upload and status views.
-- [ ] Add keyword, vector, and hybrid search views.
+- [x] Add document upload and status views.
+- [x] Add keyword, vector, and hybrid search views.
 - [ ] Create project-authored sample documents and relevance judgements.
 - [ ] Report Recall@k, MRR, and NDCG without unsupported thresholds.
 - [ ] Capture screenshots from the functioning application.
