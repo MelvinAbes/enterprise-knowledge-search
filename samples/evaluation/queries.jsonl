@@ -1,0 +1,8 @@
+{"id":"backup-retention","query":"How long are daily database backups retained?","relevant":[{"filename":"backup-and-recovery.md","section_path":["Backup and Recovery Standard","Retention"],"relevance":3}]}
+{"id":"restore-frequency","query":"How often is a restore exercise performed?","relevant":[{"filename":"backup-and-recovery.md","section_path":["Backup and Recovery Standard","Restore Verification"],"relevance":3}]}
+{"id":"temporary-access","query":"When does temporary privileged access expire?","relevant":[{"filename":"access-control-policy.md","section_path":["Access Control Policy","Privileged Access"],"relevance":3}]}
+{"id":"access-review","query":"How frequently are privileged roles reviewed?","relevant":[{"filename":"access-control-policy.md","section_path":["Access Control Policy","Access Reviews"],"relevance":3}]}
+{"id":"suspicious-login","query":"What should happen after repeated failed sign-ins followed by a privileged login?","relevant":[{"filename":"incident-response-guide.md","section_path":["Incident Response Guide","Suspicious Authentication Sequence"],"relevance":3},{"filename":"access-control-policy.md","section_path":["Access Control Policy","Credential Handling"],"relevance":1}]}
+{"id":"hot-log-retention","query":"How many days do logs remain searchable?","relevant":[{"filename":"log-retention.txt","section_path":[],"relevance":3}]}
+{"id":"firmware-window","query":"When is gateway firmware maintenance scheduled?","relevant":[{"filename":"device-maintenance-handbook.pdf","section_path":[],"page_number":1,"relevance":3}]}
+{"id":"device-rollback","query":"When must a gateway firmware update be rolled back?","relevant":[{"filename":"device-maintenance-handbook.pdf","section_path":[],"page_number":2,"relevance":3}]}

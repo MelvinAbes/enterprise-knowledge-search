@@ -1,0 +1,16 @@
+Application and Device Log Retention
+
+Live search:
+Application and device logs remain in the searchable hot tier for 90 days. Access to this tier
+is limited to operations and security staff with a documented support or investigation need.
+
+Archive:
+Security-relevant audit events are copied to an encrypted archive for one year. Routine debug
+events are not archived after their hot-tier period.
+
+Deletion:
+At the end of the applicable period, lifecycle jobs delete expired records and write aggregate
+counts to the retention audit table. Legal holds suspend deletion only for the named data set.
+
+Data minimisation:
+Logs must not contain passwords, access tokens, full payment details, or document contents.

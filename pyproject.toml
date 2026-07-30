@@ -64,7 +64,7 @@ known-first-party = ["knowledge_search"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 pretty = true
 show_error_codes = true
 warn_unreachable = true

@@ -37,8 +37,8 @@
 
 - [x] Add document upload and status views.
 - [x] Add keyword, vector, and hybrid search views.
-- [ ] Create project-authored sample documents and relevance judgements.
-- [ ] Report Recall@k, MRR, and NDCG without unsupported thresholds.
+- [x] Create project-authored sample documents and relevance judgements.
+- [x] Report Recall@k, MRR, and NDCG from live search responses.
 - [ ] Capture screenshots from the functioning application.
 
 ## Quality and publication

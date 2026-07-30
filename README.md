@@ -209,6 +209,29 @@ curl --request DELETE \
 Deletion returns `204 No Content`. Queued and processing documents return `409 Conflict` so an
 active ingestion cannot be removed underneath its worker.
 
+## Retrieval evaluation
+
+The repository includes five original demonstration documents and eight graded queries. Source
+locations—not generated chunk identifiers—define relevance, so the judgments remain stable
+when the corpus is ingested again.
+
+With the API and worker running:
+
+```bash
+make seed
+make evaluate
+```
+
+`make evaluate` measures Recall@5, reciprocal rank, and NDCG@5 from live search responses.
+Override `MODE` and `LIMIT` to compare retrieval configurations:
+
+```bash
+MODE=keyword LIMIT=10 make evaluate
+```
+
+The command prints the aggregate and per-query observations as JSON. This repository does not
+commit a benchmark result before the complete container environment has reproduced it.
+
 ## Technology and design decisions
 
 - FastAPI and Pydantic provide typed HTTP and configuration boundaries.
@@ -229,7 +252,8 @@ stores uploaded files locally, and operates as a single workspace without authen
 interface does not provide bulk operations or user-specific collections. A failure while
 initially dispatching a job is retained for diagnosis but currently requires operator
 intervention to requeue. Retrieval and generated-answer quality have not yet been evaluated
-against the planned relevance dataset.
+as a deployment claim; the included dataset and command are intended to make those measurements
+reproducible in the local environment.
 
 ## Roadmap
 
