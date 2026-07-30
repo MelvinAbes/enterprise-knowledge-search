@@ -14,6 +14,7 @@ from knowledge_search.domain import (
 )
 from knowledge_search.persistence.models import (
     ChunkRecord,
+    CorpusRevisionRecord,
     DocumentRecord,
     IngestionJobRecord,
 )
@@ -73,6 +74,11 @@ class SqlAlchemyChunkRepository:
         )
         return [_record_to_chunk(record) for record in self._session.scalars(statement)]
 
+    def delete_for_document(self, document_id: UUID) -> None:
+        statement = select(ChunkRecord).where(ChunkRecord.document_id == document_id)
+        for record in self._session.scalars(statement):
+            self._session.delete(record)
+
 
 class SqlAlchemyIngestionJobRepository:
     def __init__(self, session: Session) -> None:
@@ -95,6 +101,18 @@ class SqlAlchemyIngestionJobRepository:
         record.updated_at = job.updated_at
         record.started_at = job.started_at
         record.finished_at = job.finished_at
+
+
+class SqlAlchemyCorpusRevisionRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def increment(self) -> int:
+        record = self._session.get(CorpusRevisionRecord, 1, with_for_update=True)
+        if record is None:
+            raise LookupError("corpus revision singleton does not exist")
+        record.revision += 1
+        return record.revision
 
 
 def _document_to_record(document: Document) -> DocumentRecord:

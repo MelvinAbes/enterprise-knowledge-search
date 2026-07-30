@@ -11,11 +11,16 @@ requires-python = ">=3.12,<3.14"
 license = "Apache-2.0"
 dependencies = [
     "alembic>=1.16,<2",
+    "fastembed>=0.7,<1",
     "fastapi>=0.136,<1",
     "markdown-it-py>=4.0,<5",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.10,<3",
     "pypdf>=6.0,<7",
+    "python-multipart>=0.0.20,<1",
+    "qdrant-client>=1.15,<2",
+    "redis>=6.4,<8",
+    "rq>=2.6,<3",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.35,<1",
 ]

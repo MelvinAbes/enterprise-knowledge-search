@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: sync format lint typecheck test test-unit test-integration check audit secret-scan migrate migration-check run
+.PHONY: sync format lint typecheck test test-unit test-integration check audit secret-scan migrate migration-check run worker
 
 sync:
 	$(UV) sync --all-groups
@@ -43,3 +43,9 @@ run:
 	$(UV) run uvicorn knowledge_search.main:app --reload \
 		--host "$${EKS_HOST:-127.0.0.1}" \
 		--port "$${EKS_PORT:-8000}"
+
+worker:
+	$(UV) run rq worker \
+		--url "$${EKS_REDIS_URL:-redis://127.0.0.1:6379/0}" \
+		--serializer json \
+		"$${EKS_INGESTION_QUEUE_NAME:-document-ingestion}"

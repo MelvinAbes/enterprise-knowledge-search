@@ -102,6 +102,7 @@ Test recovery monthly.\r
 def test_content_preparer_uses_configured_fixed_window_strategy() -> None:
     settings = Settings(
         database_url=SecretStr("postgresql+psycopg://user:test@localhost/database"),
+        redis_url=SecretStr("redis://localhost:6379/0"),
         chunking_strategy="fixed_window",
         chunk_size_tokens=20,
         chunk_overlap_tokens=0,

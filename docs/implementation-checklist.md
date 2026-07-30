@@ -7,21 +7,21 @@
 - [x] Identify principal dependencies and licence considerations.
 - [x] Initialize typed FastAPI application.
 - [x] Configure formatting, linting, static analysis, tests, and continuous integration.
-- [ ] Add structured problem-detail error responses.
+- [x] Add structured problem-detail error responses.
 - [ ] Add request correlation and structured logging.
 
 ## Ingestion
 
 - [x] Add document, chunk, and ingestion-job models.
 - [x] Add the initial PostgreSQL migration.
-- [ ] Validate streamed PDF, Markdown, and text uploads.
+- [x] Validate streamed PDF, Markdown, and text uploads.
 - [x] Implement safe local file storage with size limits and SHA-256 hashing.
-- [ ] Reject duplicate content during document registration.
+- [x] Reject duplicate content during document registration.
 - [x] Implement format-specific extraction and normalization.
 - [x] Implement fixed-window and section-aware chunking.
-- [ ] Queue jobs using identifier-only JSON payloads.
+- [x] Queue jobs using identifier-only JSON payloads.
 - [x] Add deterministic chunk identifiers and idempotent lifecycle transitions.
-- [ ] Generate local embeddings and upsert Qdrant points.
+- [x] Generate local embeddings and upsert Qdrant points.
 
 ## Retrieval and answers
 
@@ -43,7 +43,7 @@
 ## Quality and publication
 
 - [x] Add real PostgreSQL migration and repository integration tests.
-- [ ] Add integration tests for Qdrant and Redis.
+- [x] Add adapter tests for Qdrant and a container integration test for Redis.
 - [ ] Add API smoke tests through Docker Compose.
 - [ ] Run dependency and container vulnerability scans.
 - [ ] Verify setup instructions in a clean environment.

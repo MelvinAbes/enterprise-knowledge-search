@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     chunk_size_tokens: int = Field(default=300, ge=20)
     chunk_overlap_tokens: int = Field(default=50, ge=0)
     chunking_strategy: ChunkingStrategyName = "section_aware"
+    redis_url: SecretStr = Field(description="Redis connection URL")
+    ingestion_queue_name: str = Field(default="document-ingestion", min_length=1)
+    qdrant_url: str = Field(default="http://127.0.0.1:6333", min_length=1)
+    qdrant_collection: str = Field(default="knowledge_chunks", pattern=r"^[a-zA-Z0-9_-]+$")
+    embedding_model: str = Field(default="BAAI/bge-small-en-v1.5", min_length=1)
+    embedding_dimensions: int = Field(default=384, ge=1)
+    model_cache_path: Path = Path("model-cache")
 
     @field_validator("database_url")
     @classmethod

@@ -12,4 +12,11 @@ def test_readiness(client: TestClient) -> None:
     response = client.get("/health/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready"}
+    assert response.json() == {
+        "status": "ready",
+        "checks": {
+            "database": True,
+            "queue": True,
+            "vector_index": True,
+        },
+    }

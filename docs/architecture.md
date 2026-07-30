@@ -119,12 +119,14 @@ so indexing retries address the same relational and vector records.
 3. The worker receives document and job identifiers through a JSON queue payload.
 4. A format-specific extractor returns normalized sections with source locators.
 5. The configured chunker produces deterministic chunk identifiers.
-6. PostgreSQL stores chunk text, locators, and full-text search vectors.
-7. The embedding adapter creates dense vectors and upserts them into Qdrant.
+6. The embedding adapter creates dense vectors and upserts them into Qdrant.
+7. PostgreSQL stores chunk text, locators, and generated full-text search vectors.
 8. The worker marks the document ready and increments the corpus revision.
 
-Failures record a safe code and diagnostic context without logging document contents. Retrying
-the same job reuses stable identifiers and idempotent upserts.
+Failures record a safe code without logging document contents. RQ retries processing failures,
+and the worker converts a failed domain job back through the queued state before starting the
+next attempt. Repeated delivery of an already successful job exits without changing the corpus
+revision.
 
 ## Retrieval flow
 

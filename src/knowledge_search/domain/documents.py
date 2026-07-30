@@ -46,7 +46,7 @@ DOCUMENT_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
 }
 
 JOB_TRANSITIONS: dict[IngestionJobStatus, frozenset[IngestionJobStatus]] = {
-    IngestionJobStatus.QUEUED: frozenset({IngestionJobStatus.RUNNING}),
+    IngestionJobStatus.QUEUED: frozenset({IngestionJobStatus.RUNNING, IngestionJobStatus.FAILED}),
     IngestionJobStatus.RUNNING: frozenset(
         {IngestionJobStatus.SUCCEEDED, IngestionJobStatus.FAILED}
     ),

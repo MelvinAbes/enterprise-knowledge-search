@@ -16,7 +16,8 @@ The application is licensed under Apache-2.0. Exact package versions will be rec
 | Qdrant Python client | Vector-store adapter | MIT |
 | FastEmbed | Local embedding inference | Apache-2.0 |
 | BAAI/bge-small-en-v1.5 | Default English embedding model | MIT |
-| Redis | Cache and background queue | Redis 8 offers AGPL-3.0 as an open-source option |
+| Redis 7.2 | Cache and background queue | BSD-3-Clause |
+| redis-py | Redis client | MIT |
 | RQ | Background job processing | BSD-2-Clause |
 | pypdf | Text extraction from PDFs | BSD-3-Clause |
 | markdown-it-py | Markdown parsing | MIT |
