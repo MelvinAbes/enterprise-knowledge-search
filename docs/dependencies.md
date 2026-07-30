@@ -32,6 +32,7 @@ upstream container images rather than redistributing modified service source.
 | Dependency | Purpose |
 | --- | --- |
 | pytest | Automated tests |
+| ReportLab | Deterministic PDF fixtures and demonstration-document generation |
 | Ruff | Formatting and linting |
 | mypy | Static type analysis |
 | pip-audit | Python dependency vulnerability checks |

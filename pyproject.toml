@@ -12,8 +12,10 @@ license = "Apache-2.0"
 dependencies = [
     "alembic>=1.16,<2",
     "fastapi>=0.136,<1",
+    "markdown-it-py>=4.0,<5",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.10,<3",
+    "pypdf>=6.0,<7",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.35,<1",
 ]
@@ -24,6 +26,7 @@ dev = [
     "mypy>=1.17,<2",
     "pip-audit>=2.10,<3",
     "pytest>=8.4,<10",
+    "reportlab>=4.4,<5",
     "ruff>=0.12,<1",
     "testcontainers[postgres]>=4.15,<5",
 ]
@@ -56,3 +59,8 @@ files = ["src", "tests"]
 pretty = true
 show_error_codes = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# ReportLab is used only to build deterministic PDF fixtures and does not publish typing metadata.
+module = ["reportlab.*"]
+ignore_missing_imports = true

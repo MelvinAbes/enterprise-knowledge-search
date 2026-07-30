@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 from uuid import UUID
 
@@ -17,6 +18,14 @@ from knowledge_search.domain import (
     IngestionJobStatus,
     SourceLocator,
 )
+from knowledge_search.ingestion import (
+    DocumentContentPreparer,
+    DocumentExtractorRegistry,
+    MarkdownExtractor,
+    PdfExtractor,
+    SectionAwareChunker,
+    TextExtractor,
+)
 from knowledge_search.persistence import (
     PostgresSessionFactory,
     SqlAlchemyChunkRepository,
@@ -24,6 +33,7 @@ from knowledge_search.persistence import (
     SqlAlchemyIngestionJobRepository,
 )
 from knowledge_search.persistence.models import ChunkRecord, CorpusRevisionRecord
+from knowledge_search.providers import LocalDocumentStore
 
 pytestmark = pytest.mark.integration
 
@@ -164,5 +174,80 @@ def test_repositories_persist_lifecycle_changes(migrated_database_url: str) -> N
         assert stored_job is not None
         assert stored_job.status is IngestionJobStatus.SUCCEEDED
         assert stored_job.attempt_count == 1
+    finally:
+        session_factory.dispose()
+
+
+def test_prepared_markdown_chunks_are_lexically_indexed(
+    migrated_database_url: str,
+    tmp_path: Path,
+) -> None:
+    document_id = UUID("86d7a0a9-4cd0-4f38-a4d0-602f13c3dcc1")
+    source = BytesIO(
+        b"""# Operations
+
+Database backups are retained for thirty days.
+
+## Recovery
+
+Recovery exercises are completed every month.
+"""
+    )
+    store = LocalDocumentStore(tmp_path)
+    stored = store.save(
+        document_id=document_id,
+        media_type=DocumentMediaType.MARKDOWN,
+        source=source,
+        max_bytes=4_096,
+    )
+    document = (
+        Document.create(
+            document_id=document_id,
+            original_filename="operations.md",
+            storage_key=stored.storage_key,
+            media_type=DocumentMediaType.MARKDOWN,
+            sha256=stored.sha256,
+            size_bytes=stored.size_bytes,
+            now=CREATED_AT,
+        )
+        .queue(now=CREATED_AT + timedelta(seconds=1))
+        .start_processing(now=CREATED_AT + timedelta(seconds=2))
+    )
+    preparer = DocumentContentPreparer(
+        extractors=DocumentExtractorRegistry(
+            text=TextExtractor(),
+            markdown=MarkdownExtractor(),
+            pdf=PdfExtractor(max_pages=10),
+        ),
+        chunker=SectionAwareChunker(size=40, overlap=5),
+    )
+    with store.open(stored.storage_key) as stored_source:
+        chunks = preparer.prepare(document, stored_source)
+
+    session_factory = PostgresSessionFactory(SecretStr(migrated_database_url))
+    try:
+        with session_factory.transaction() as session:
+            SqlAlchemyDocumentRepository(session).add(document)
+            SqlAlchemyChunkRepository(session).add_many(chunks)
+
+        with session_factory.transaction() as session:
+            repository = SqlAlchemyDocumentRepository(session)
+            stored_document = repository.get(document.id)
+            assert stored_document is not None
+            repository.save(stored_document.mark_ready(now=CREATED_AT + timedelta(seconds=3)))
+
+        with session_factory.transaction() as session:
+            indexed_chunks = SqlAlchemyChunkRepository(session).list_for_document(document.id)
+            search_vectors = session.scalars(
+                select(ChunkRecord.search_vector)
+                .where(ChunkRecord.document_id == document.id)
+                .order_by(ChunkRecord.ordinal)
+            ).all()
+
+        assert len(indexed_chunks) == 2
+        assert indexed_chunks[0].locator.section_path == ("Operations",)
+        assert indexed_chunks[1].locator.section_path == ("Operations", "Recovery")
+        assert any("backup" in str(vector) for vector in search_vectors)
+        assert any("recoveri" in str(vector) for vector in search_vectors)
     finally:
         session_factory.dispose()

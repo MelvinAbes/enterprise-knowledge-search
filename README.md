@@ -14,10 +14,11 @@ citations that identify the supporting document section.
 ## Current status
 
 The repository currently contains the approved architecture, a runnable FastAPI foundation,
-and the first PostgreSQL persistence slice. It includes document and ingestion lifecycles,
-deterministic chunk identities, relational repositories, and an Alembic migration with a
-generated lexical-search index. Document upload, vector retrieval, and the user interface will
-be added as tested vertical slices.
+and the first ingestion and PostgreSQL persistence slices. It includes safe local file storage,
+PDF/Markdown/text extraction, normalization, configurable chunking, deterministic chunk
+identities, relational repositories, and an Alembic migration with a generated lexical-search
+index. Document upload endpoints, vector retrieval, and the user interface will be added as
+tested vertical slices.
 
 ## Planned architecture
 

@@ -25,6 +25,14 @@ RQ is intentionally smaller than a general distributed workflow platform for thi
 release. Queue messages use JSON and contain identifiers only. More complex scheduling is not
 currently justified.
 
+## Source-aware chunking
+
+The content-preparation pipeline offers fixed-window and section-aware strategies. Both use
+overlapping token windows, but section-aware chunking prevents a chunk from crossing a Markdown
+heading or PDF page boundary. Fixed-window chunking is useful as a retrieval-evaluation
+baseline. Character offsets refer to the normalized document stream, while heading paths and
+PDF page numbers remain the primary citation locators.
+
 ## Local embeddings by default
 
 The default embedding adapter uses the small English BGE model through ONNX-based inference.

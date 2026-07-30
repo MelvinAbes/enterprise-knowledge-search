@@ -19,3 +19,14 @@ def test_settings_reject_invalid_port() -> None:
 def test_settings_reject_non_psycopg_database_driver() -> None:
     with pytest.raises(ValidationError):
         Settings.model_validate({"database_url": "postgresql://localhost/knowledge_search"})
+
+
+def test_settings_reject_chunk_overlap_equal_to_size() -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate(
+            {
+                "database_url": VALID_DATABASE_URL,
+                "chunk_size_tokens": 100,
+                "chunk_overlap_tokens": 100,
+            }
+        )

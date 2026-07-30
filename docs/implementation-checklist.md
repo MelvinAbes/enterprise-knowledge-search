@@ -15,9 +15,10 @@
 - [x] Add document, chunk, and ingestion-job models.
 - [x] Add the initial PostgreSQL migration.
 - [ ] Validate streamed PDF, Markdown, and text uploads.
-- [ ] Implement safe local file storage and SHA-256 duplicate detection.
-- [ ] Implement format-specific extraction and normalization.
-- [ ] Implement fixed-window and section-aware chunking.
+- [x] Implement safe local file storage with size limits and SHA-256 hashing.
+- [ ] Reject duplicate content during document registration.
+- [x] Implement format-specific extraction and normalization.
+- [x] Implement fixed-window and section-aware chunking.
 - [ ] Queue jobs using identifier-only JSON payloads.
 - [x] Add deterministic chunk identifiers and idempotent lifecycle transitions.
 - [ ] Generate local embeddings and upsert Qdrant points.
