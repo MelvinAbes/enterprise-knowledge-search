@@ -157,15 +157,18 @@ class DocumentDeletionService:
         *,
         sessions: PostgresSessionFactory,
         store: DocumentStore,
+        queue: IngestionQueue,
         vector_index: VectorIndex,
     ) -> None:
         self._sessions = sessions
         self._store = store
+        self._queue = queue
         self._vector_index = vector_index
 
     def delete(self, document_id: UUID) -> None:
         with self._sessions.transaction() as session:
             repository = SqlAlchemyDocumentRepository(session)
+            job_repository = SqlAlchemyIngestionJobRepository(session)
             document = repository.get(document_id)
             if document is None:
                 raise DocumentNotFoundError(document_id)
@@ -181,7 +184,13 @@ class DocumentDeletionService:
                 document = document.mark_deleting()
                 repository.save(document)
                 SqlAlchemyCorpusRevisionRepository(session).increment()
+            job_ids = [job.id for job in job_repository.list_for_document(document.id)]
 
+        try:
+            for job_id in job_ids:
+                self._queue.cancel(job_id)
+        except QueueDispatchError as error:
+            raise DocumentCleanupError("Queued ingestion cleanup failed.") from error
         try:
             self._vector_index.delete_document(document.id)
         except VectorIndexError as error:

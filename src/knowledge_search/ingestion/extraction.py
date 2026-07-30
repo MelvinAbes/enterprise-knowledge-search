@@ -74,14 +74,15 @@ class MarkdownExtractor:
 
             next_line = headings[position + 1][0] if position + 1 < len(headings) else len(lines)
             body = "".join(lines[line_number + 1 : next_line])
+            if not body.strip():
+                continue
             section_text = f"{heading}\n{body}"
-            if section_text.strip():
-                sections.append(
-                    ExtractedSection(
-                        text=section_text,
-                        section_path=tuple(item[1] for item in heading_stack),
-                    )
+            sections.append(
+                ExtractedSection(
+                    text=section_text,
+                    section_path=tuple(item[1] for item in heading_stack),
                 )
+            )
 
         return sections
 

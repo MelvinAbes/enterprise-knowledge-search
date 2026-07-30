@@ -197,6 +197,7 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
         deletions=DocumentDeletionService(
             sessions=sessions,
             store=store,
+            queue=queue,
             vector_index=vector_index,
         ),
     )

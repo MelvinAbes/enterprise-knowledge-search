@@ -50,9 +50,13 @@ pytestmark = pytest.mark.integration
 class RecordingQueue:
     def __init__(self) -> None:
         self.job_ids: list[UUID] = []
+        self.cancelled_job_ids: list[UUID] = []
 
     def enqueue(self, job_id: UUID) -> None:
         self.job_ids.append(job_id)
+
+    def cancel(self, job_id: UUID) -> None:
+        self.cancelled_job_ids.append(job_id)
 
     def is_ready(self) -> bool:
         return True
@@ -61,6 +65,9 @@ class RecordingQueue:
 class UnavailableQueue:
     def enqueue(self, job_id: UUID) -> None:
         raise QueueDispatchError(f"queue rejected {job_id}")
+
+    def cancel(self, job_id: UUID) -> None:
+        raise QueueDispatchError(f"queue did not cancel {job_id}")
 
     def is_ready(self) -> bool:
         return False
@@ -203,6 +210,7 @@ def _api_client(
         deletions=DocumentDeletionService(
             sessions=sessions,
             store=store,
+            queue=queue,
             vector_index=deletion_vector_index,
         ),
     )
@@ -351,6 +359,7 @@ def test_upload_worker_and_status_endpoints_complete_document_ingestion(
             deletion_revision = session.get(CorpusRevisionRecord, 1)
         assert deletion_revision is not None
         assert deletion_revision.revision == 2
+        assert queue.cancelled_job_ids == [job_id]
 
 
 def test_queued_document_cannot_be_deleted(

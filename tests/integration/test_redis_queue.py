@@ -36,3 +36,8 @@ def test_redis_queue_serializes_ingestion_job_reference(redis_url: str) -> None:
     assert queued_job.func_name == WORKER_FUNCTION
     assert queued_job.args == [str(job_id)]
     assert queued_job.retries_left == 3
+
+    adapter.cancel(job_id)
+    adapter.cancel(job_id)
+
+    assert queue.job_ids == []

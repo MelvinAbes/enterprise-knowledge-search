@@ -96,6 +96,14 @@ class SqlAlchemyIngestionJobRepository:
         record = self._session.get(IngestionJobRecord, job_id)
         return None if record is None else _record_to_job(record)
 
+    def list_for_document(self, document_id: UUID) -> list[IngestionJob]:
+        statement = (
+            select(IngestionJobRecord)
+            .where(IngestionJobRecord.document_id == document_id)
+            .order_by(IngestionJobRecord.created_at, IngestionJobRecord.id)
+        )
+        return [_record_to_job(record) for record in self._session.scalars(statement)]
+
     def save(self, job: IngestionJob) -> None:
         record = self._session.get(IngestionJobRecord, job.id)
         if record is None:

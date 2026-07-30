@@ -67,6 +67,24 @@ Test recovery every month.
     assert "# This is code, not a heading" in sections[2].text
 
 
+def test_markdown_extractor_skips_heading_only_sections() -> None:
+    source = BytesIO(
+        b"""# Operations
+
+## Backups
+
+Retain backups for thirty days.
+"""
+    )
+
+    sections = MarkdownExtractor().extract(source)
+
+    assert [section.section_path for section in sections] == [
+        ("Operations", "Backups"),
+    ]
+    assert sections[0].text.startswith("Backups\n")
+
+
 def test_pdf_extractor_returns_page_locators() -> None:
     sections = PdfExtractor(max_pages=5).extract(
         create_pdf("Backup retention is thirty days.", "Recovery tests run monthly.")
