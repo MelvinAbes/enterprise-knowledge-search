@@ -27,6 +27,7 @@ from knowledge_search.ingestion import (
     TextExtractor,
 )
 from knowledge_search.persistence import (
+    PostgresSearchRepository,
     PostgresSessionFactory,
     SqlAlchemyChunkRepository,
     SqlAlchemyDocumentRepository,
@@ -34,6 +35,7 @@ from knowledge_search.persistence import (
 )
 from knowledge_search.persistence.models import ChunkRecord, CorpusRevisionRecord
 from knowledge_search.providers import LocalDocumentStore
+from knowledge_search.retrieval import SearchFilters
 
 pytestmark = pytest.mark.integration
 
@@ -249,5 +251,74 @@ Recovery exercises are completed every month.
         assert indexed_chunks[1].locator.section_path == ("Operations", "Recovery")
         assert any("backup" in str(vector) for vector in search_vectors)
         assert any("recoveri" in str(vector) for vector in search_vectors)
+    finally:
+        session_factory.dispose()
+
+
+def test_keyword_search_excludes_non_ready_documents_and_applies_filters(
+    migrated_database_url: str,
+) -> None:
+    ready_document = (
+        create_document()
+        .queue(now=CREATED_AT + timedelta(seconds=1))
+        .start_processing(now=CREATED_AT + timedelta(seconds=2))
+        .mark_ready(now=CREATED_AT + timedelta(seconds=3))
+    )
+    processing_document = (
+        Document.create(
+            document_id=UUID("64032fc9-ec89-4b30-8401-46f7ae33139c"),
+            original_filename="draft-policy.pdf",
+            storage_key="draft/source.pdf",
+            media_type=DocumentMediaType.PDF,
+            sha256="d" * 64,
+            size_bytes=1_000,
+            now=CREATED_AT,
+        )
+        .queue(now=CREATED_AT + timedelta(seconds=1))
+        .start_processing(now=CREATED_AT + timedelta(seconds=2))
+    )
+    ready_chunk = Chunk.create(
+        document_id=ready_document.id,
+        ordinal=0,
+        text="Database backups are retained for thirty days.",
+        token_count=8,
+        content_hash="e" * 64,
+        locator=SourceLocator(section_path=("Operations", "Backups")),
+    )
+    processing_chunk = Chunk.create(
+        document_id=processing_document.id,
+        ordinal=0,
+        text="Database backups backups backups are still being reviewed.",
+        token_count=8,
+        content_hash="f" * 64,
+        locator=SourceLocator(page_number=1),
+    )
+    session_factory = PostgresSessionFactory(SecretStr(migrated_database_url))
+    try:
+        with session_factory.transaction() as session:
+            SqlAlchemyDocumentRepository(session).add(ready_document)
+            SqlAlchemyDocumentRepository(session).add(processing_document)
+            SqlAlchemyChunkRepository(session).add_many([ready_chunk, processing_chunk])
+
+        repository = PostgresSearchRepository(session_factory)
+        candidates = repository.keyword_candidates(
+            query="database backups",
+            limit=10,
+            filters=SearchFilters(),
+        )
+        markdown_candidates = repository.keyword_candidates(
+            query="database backups",
+            limit=10,
+            filters=SearchFilters(media_types=(DocumentMediaType.MARKDOWN,)),
+        )
+        pdf_candidates = repository.keyword_candidates(
+            query="database backups",
+            limit=10,
+            filters=SearchFilters(media_types=(DocumentMediaType.PDF,)),
+        )
+
+        assert [candidate.chunk_id for candidate in candidates] == [ready_chunk.id]
+        assert markdown_candidates == candidates
+        assert pdf_candidates == []
     finally:
         session_factory.dispose()

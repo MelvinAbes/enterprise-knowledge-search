@@ -17,8 +17,8 @@ The current implementation accepts validated PDF, Markdown, and text uploads, re
 content, and queues ingestion through Redis. A worker extracts and normalizes content, applies
 the configured chunking strategy, generates local embeddings, writes vectors to Qdrant, and
 stores citation metadata and lexical-search vectors in PostgreSQL. Document and job status
-endpoints expose each lifecycle transition. Retrieval endpoints and the user interface remain
-in progress.
+endpoints expose each lifecycle transition. Keyword, vector, and hybrid search return source
+citations. Answer generation and the user interface remain in progress.
 
 ## Architecture
 
@@ -157,6 +157,20 @@ The API returns `202 Accepted` with the queued document and ingestion-job identi
 }
 ```
 
+Search the ready corpus with reciprocal-rank fusion:
+
+```bash
+curl --get \
+  --url http://127.0.0.1:8000/api/v1/search \
+  --data-urlencode 'q=How long are backups retained?' \
+  --data 'mode=hybrid' \
+  --data 'limit=5'
+```
+
+Use `mode=keyword` to search without loading the embedding model. Results contain the source
+document, chunk, section path, page number when available, and the ranks contributed by each
+retriever.
+
 ## Technology and design decisions
 
 - FastAPI and Pydantic provide typed HTTP and configuration boundaries.
@@ -171,10 +185,11 @@ The detailed design is in [docs/architecture.md](docs/architecture.md), with tra
 
 ## Limitations
 
-The application does not yet expose retrieval or deletion endpoints. It supports text-based
-PDFs only, uses an English-focused local embedding model, stores uploaded files locally, and
-operates as a single workspace without authentication. A failure while initially dispatching a
-job is retained for diagnosis but currently requires operator intervention to requeue.
+The application does not yet expose deletion or answer-generation endpoints. It supports
+text-based PDFs only, uses an English-focused local embedding model, stores uploaded files
+locally, and operates as a single workspace without authentication. A failure while initially
+dispatching a job is retained for diagnosis but currently requires operator intervention to
+requeue. Retrieval quality has not yet been evaluated against the planned relevance dataset.
 
 ## Roadmap
 

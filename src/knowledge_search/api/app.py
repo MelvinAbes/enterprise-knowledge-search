@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from knowledge_search.api.errors import register_error_handlers
 from knowledge_search.api.routes.documents import router as documents_router
 from knowledge_search.api.routes.health import router as health_router
+from knowledge_search.api.routes.search import router as search_router
 from knowledge_search.api.services import (
     DocumentApiServices,
     ReadinessService,
@@ -44,4 +45,5 @@ def create_app(
     register_error_handlers(application)
     application.include_router(health_router)
     application.include_router(documents_router, prefix=application_settings.api_prefix)
+    application.include_router(search_router, prefix=application_settings.api_prefix)
     return application

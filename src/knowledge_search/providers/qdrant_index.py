@@ -3,8 +3,9 @@ from uuid import UUID
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.exceptions import ApiException, ResponseHandlingException
 
-from knowledge_search.domain import Chunk
+from knowledge_search.domain import Chunk, Document
 from knowledge_search.ingestion.errors import VectorIndexError
+from knowledge_search.retrieval.models import RetrievalCandidate, SearchFilters
 
 
 class QdrantVectorIndex:
@@ -31,24 +32,34 @@ class QdrantVectorIndex:
                     raise VectorIndexError(
                         "Existing Qdrant collection has incompatible vector dimensions."
                     )
-                return
-
-            self._client.create_collection(
-                collection_name=self._collection_name,
-                vectors_config=models.VectorParams(
-                    size=dimensions,
-                    distance=models.Distance.COSINE,
-                ),
-            )
+            else:
+                self._client.create_collection(
+                    collection_name=self._collection_name,
+                    vectors_config=models.VectorParams(
+                        size=dimensions,
+                        distance=models.Distance.COSINE,
+                    ),
+                )
             self._client.create_payload_index(
                 collection_name=self._collection_name,
                 field_name="document_id",
                 field_schema=models.PayloadSchemaType.UUID,
             )
+            self._client.create_payload_index(
+                collection_name=self._collection_name,
+                field_name="media_type",
+                field_schema=models.PayloadSchemaType.KEYWORD,
+            )
         except (ApiException, ResponseHandlingException) as error:
             raise VectorIndexError("Qdrant collection setup failed.") from error
 
-    def upsert(self, *, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+    def upsert(
+        self,
+        *,
+        document: Document,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+    ) -> None:
         if len(chunks) != len(vectors):
             raise VectorIndexError("Chunk and vector counts do not match.")
         points = [
@@ -57,6 +68,7 @@ class QdrantVectorIndex:
                 vector=vector,
                 payload={
                     "document_id": str(chunk.document_id),
+                    "media_type": document.media_type.value,
                     "ordinal": chunk.ordinal,
                     "section_path": list(chunk.locator.section_path),
                     "page_number": chunk.locator.page_number,
@@ -73,6 +85,36 @@ class QdrantVectorIndex:
             )
         except (ApiException, ResponseHandlingException) as error:
             raise VectorIndexError("Qdrant vector upsert failed.") from error
+
+    def search(
+        self,
+        *,
+        vector: list[float],
+        limit: int,
+        filters: SearchFilters,
+    ) -> list[RetrievalCandidate]:
+        try:
+            if not self._client.collection_exists(self._collection_name):
+                return []
+            response = self._client.query_points(
+                collection_name=self._collection_name,
+                query=vector,
+                query_filter=_qdrant_filter(filters),
+                limit=limit,
+                with_payload=False,
+                with_vectors=False,
+            )
+        except (ApiException, ResponseHandlingException) as error:
+            raise VectorIndexError("Qdrant vector search failed.") from error
+
+        return [
+            RetrievalCandidate(
+                chunk_id=UUID(str(point.id)),
+                rank=rank,
+                score=float(point.score),
+            )
+            for rank, point in enumerate(response.points, start=1)
+        ]
 
     def delete_document(self, document_id: UUID) -> None:
         try:
@@ -99,3 +141,24 @@ class QdrantVectorIndex:
         except (ApiException, ResponseHandlingException):
             return False
         return True
+
+
+def _qdrant_filter(filters: SearchFilters) -> models.Filter | None:
+    conditions: list[models.Condition] = []
+    if filters.document_ids:
+        conditions.append(
+            models.FieldCondition(
+                key="document_id",
+                match=models.MatchAny(
+                    any=[str(document_id) for document_id in filters.document_ids]
+                ),
+            )
+        )
+    if filters.media_types:
+        conditions.append(
+            models.FieldCondition(
+                key="media_type",
+                match=models.MatchAny(any=[media_type.value for media_type in filters.media_types]),
+            )
+        )
+    return models.Filter(must=conditions) if conditions else None

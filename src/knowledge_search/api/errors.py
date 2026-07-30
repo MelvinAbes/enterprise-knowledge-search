@@ -11,10 +11,13 @@ from knowledge_search.application.errors import (
     IngestionJobNotFoundError,
 )
 from knowledge_search.ingestion.errors import (
+    EmbeddingError,
     IngestionError,
     IngestionErrorCode,
     QueueDispatchError,
+    VectorIndexError,
 )
+from knowledge_search.retrieval.errors import SearchQueryError
 
 
 def register_error_handlers(application: FastAPI) -> None:
@@ -23,6 +26,9 @@ def register_error_handlers(application: FastAPI) -> None:
     application.add_exception_handler(DocumentNotFoundError, _document_not_found)
     application.add_exception_handler(IngestionJobNotFoundError, _job_not_found)
     application.add_exception_handler(QueueDispatchError, _queue_unavailable)
+    application.add_exception_handler(EmbeddingError, _retrieval_unavailable)
+    application.add_exception_handler(VectorIndexError, _retrieval_unavailable)
+    application.add_exception_handler(SearchQueryError, _search_query_error)
     application.add_exception_handler(RequestValidationError, _validation_error)
 
 
@@ -126,6 +132,29 @@ async def _validation_error(
         detail="One or more request values are invalid.",
         code="request_validation_failed",
         extensions={"issues": issues},
+    )
+
+
+async def _retrieval_unavailable(request: Request, error: Exception) -> JSONResponse:
+    assert isinstance(error, (EmbeddingError, VectorIndexError))
+    return _problem_response(
+        request=request,
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        title="Retrieval dependency unavailable",
+        detail="Semantic retrieval is temporarily unavailable.",
+        code="retrieval_unavailable",
+        headers={"Retry-After": "5"},
+    )
+
+
+async def _search_query_error(request: Request, error: Exception) -> JSONResponse:
+    assert isinstance(error, SearchQueryError)
+    return _problem_response(
+        request=request,
+        status_code=status.HTTP_400_BAD_REQUEST,
+        title="Search query rejected",
+        detail=str(error),
+        code="invalid_search_query",
     )
 
 

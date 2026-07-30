@@ -25,10 +25,10 @@
 
 ## Retrieval and answers
 
-- [ ] Implement PostgreSQL full-text search.
-- [ ] Implement Qdrant vector search.
-- [ ] Implement reciprocal-rank fusion and filters.
-- [ ] Assemble document, section, page, and chunk citations.
+- [x] Implement PostgreSQL full-text search.
+- [x] Implement Qdrant vector search.
+- [x] Implement reciprocal-rank fusion and filters.
+- [x] Assemble document, section, page, and chunk citations.
 - [ ] Add revision-aware query and result caching.
 - [ ] Add disabled and locally hosted answer-generation adapters.
 

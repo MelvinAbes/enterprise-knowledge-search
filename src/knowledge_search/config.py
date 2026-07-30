@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     embedding_model: str = Field(default="BAAI/bge-small-en-v1.5", min_length=1)
     embedding_dimensions: int = Field(default=384, ge=1)
     model_cache_path: Path = Path("model-cache")
+    retrieval_candidate_multiplier: int = Field(default=4, ge=1, le=20)
+    hybrid_rrf_k: int = Field(default=60, ge=1, le=1_000)
 
     @field_validator("database_url")
     @classmethod

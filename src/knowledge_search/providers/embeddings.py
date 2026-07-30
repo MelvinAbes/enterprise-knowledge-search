@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Lock
 
 from fastembed import TextEmbedding
 
@@ -15,11 +16,9 @@ class FastEmbedProvider:
     ) -> None:
         self._model_name = model_name
         self._dimensions = dimensions
-        self._model = TextEmbedding(
-            model_name=model_name,
-            cache_dir=str(cache_path),
-            lazy_load=True,
-        )
+        self._cache_path = cache_path
+        self._model: TextEmbedding | None = None
+        self._model_lock = Lock()
 
     @property
     def model_name(self) -> str:
@@ -35,7 +34,7 @@ class FastEmbedProvider:
         try:
             vectors = [
                 [float(value) for value in vector]
-                for vector in self._model.embed(texts, batch_size=64)
+                for vector in self._get_model().embed(texts, batch_size=64)
             ]
         except Exception as error:
             raise EmbeddingError("Local embedding inference failed.") from error
@@ -45,3 +44,14 @@ class FastEmbedProvider:
         if any(len(vector) != self._dimensions for vector in vectors):
             raise EmbeddingError("Embedding dimensions do not match the configured collection.")
         return vectors
+
+    def _get_model(self) -> TextEmbedding:
+        if self._model is None:
+            with self._model_lock:
+                if self._model is None:
+                    self._model = TextEmbedding(
+                        model_name=self._model_name,
+                        cache_dir=str(self._cache_path),
+                        lazy_load=True,
+                    )
+        return self._model

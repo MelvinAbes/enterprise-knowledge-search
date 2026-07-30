@@ -52,7 +52,11 @@ class IngestionJobProcessor:
                 chunks = self._content_preparer.prepare(document, source)
             vectors = self._embeddings.embed_documents([chunk.text for chunk in chunks])
             self._vector_index.ensure_collection(dimensions=self._embeddings.dimensions)
-            self._vector_index.upsert(chunks=chunks, vectors=vectors)
+            self._vector_index.upsert(
+                document=document,
+                chunks=chunks,
+                vectors=vectors,
+            )
 
             with self._sessions.transaction() as session:
                 document_repository = SqlAlchemyDocumentRepository(session)

@@ -1,0 +1,2 @@
+class SearchQueryError(ValueError):
+    pass

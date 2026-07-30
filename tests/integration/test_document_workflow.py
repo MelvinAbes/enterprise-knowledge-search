@@ -13,10 +13,14 @@ from knowledge_search.api.services import (
     DocumentApiServices,
     ReadinessService,
 )
-from knowledge_search.application import DocumentQueries, DocumentSubmissionService
+from knowledge_search.application import (
+    DocumentQueries,
+    DocumentSubmissionService,
+    SearchService,
+)
 from knowledge_search.application.ingestion import IngestionJobProcessor
 from knowledge_search.config import Settings
-from knowledge_search.domain import Chunk, DocumentStatus, IngestionJobStatus
+from knowledge_search.domain import Chunk, Document, DocumentStatus, IngestionJobStatus
 from knowledge_search.ingestion import (
     DocumentContentPreparer,
     DocumentExtractorRegistry,
@@ -27,6 +31,7 @@ from knowledge_search.ingestion import (
 )
 from knowledge_search.ingestion.errors import EmbeddingError, QueueDispatchError
 from knowledge_search.persistence import (
+    PostgresSearchRepository,
     PostgresSessionFactory,
     SqlAlchemyChunkRepository,
     SqlAlchemyDocumentRepository,
@@ -34,6 +39,7 @@ from knowledge_search.persistence import (
 )
 from knowledge_search.persistence.models import CorpusRevisionRecord, IngestionJobRecord
 from knowledge_search.providers import LocalDocumentStore
+from knowledge_search.retrieval import RetrievalCandidate, SearchFilters
 
 pytestmark = pytest.mark.integration
 
@@ -83,15 +89,24 @@ class FailingEmbeddings:
 class RecordingVectorIndex:
     def __init__(self) -> None:
         self.dimensions: int | None = None
-        self.points: dict[UUID, tuple[Chunk, list[float]]] = {}
+        self.points: dict[UUID, tuple[Document, Chunk, list[float]]] = {}
         self.deleted_document_ids: list[UUID] = []
 
     def ensure_collection(self, *, dimensions: int) -> None:
         self.dimensions = dimensions
 
-    def upsert(self, *, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+    def upsert(
+        self,
+        *,
+        document: Document,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+    ) -> None:
         self.points.update(
-            {chunk.id: (chunk, vector) for chunk, vector in zip(chunks, vectors, strict=True)}
+            {
+                chunk.id: (document, chunk, vector)
+                for chunk, vector in zip(chunks, vectors, strict=True)
+            }
         )
 
     def delete_document(self, document_id: UUID) -> None:
@@ -99,8 +114,27 @@ class RecordingVectorIndex:
         self.points = {
             chunk_id: value
             for chunk_id, value in self.points.items()
-            if value[0].document_id != document_id
+            if value[1].document_id != document_id
         }
+
+    def search(
+        self,
+        *,
+        vector: list[float],
+        limit: int,
+        filters: SearchFilters,
+    ) -> list[RetrievalCandidate]:
+        matching = [
+            (chunk_id, sum(left * right for left, right in zip(point, vector, strict=True)))
+            for chunk_id, (document, _, point) in self.points.items()
+            if (not filters.document_ids or document.id in filters.document_ids)
+            and (not filters.media_types or document.media_type in filters.media_types)
+        ]
+        matching.sort(key=lambda item: (-item[1], str(item[0])))
+        return [
+            RetrievalCandidate(chunk_id=chunk_id, rank=rank, score=score)
+            for rank, (chunk_id, score) in enumerate(matching[:limit], start=1)
+        ]
 
     def is_ready(self) -> bool:
         return True
@@ -123,6 +157,7 @@ def _api_client(
     database_url: str,
     storage_path: Path,
     queue: RecordingQueue | UnavailableQueue,
+    search_vector_index: RecordingVectorIndex | None = None,
 ) -> Iterator[tuple[TestClient, PostgresSessionFactory]]:
     sessions = PostgresSessionFactory(SecretStr(database_url))
     submissions = DocumentSubmissionService(
@@ -140,6 +175,17 @@ def _api_client(
             vector_index=RecordingVectorIndex(),
         ),
         shutdown=sessions.dispose,
+        search=(
+            SearchService(
+                repository=PostgresSearchRepository(sessions),
+                embeddings=DeterministicEmbeddings(),
+                vector_index=search_vector_index,
+                candidate_multiplier=4,
+                rrf_k=60,
+            )
+            if search_vector_index is not None
+            else None
+        ),
     )
     settings = Settings(
         environment="test",
@@ -164,6 +210,7 @@ def test_upload_worker_and_status_endpoints_complete_document_ingestion(
         database_url=migrated_database_url,
         storage_path=tmp_path,
         queue=queue,
+        search_vector_index=vector_index,
     ) as (client, sessions):
         response = client.post(
             "/api/v1/documents",
@@ -216,6 +263,45 @@ def test_upload_worker_and_status_endpoints_complete_document_ingestion(
         assert vector_index.dimensions == 3
         assert revision is not None
         assert revision.revision == 1
+
+        keyword_response = client.get(
+            "/api/v1/search",
+            params={"q": "monthly recovery", "mode": "keyword"},
+        )
+        vector_response = client.get(
+            "/api/v1/search",
+            params={"q": "monthly recovery", "mode": "vector"},
+        )
+        hybrid_response = client.get(
+            "/api/v1/search",
+            params={"q": "monthly recovery", "mode": "hybrid"},
+        )
+
+        assert keyword_response.status_code == 200
+        assert vector_response.status_code == 200
+        assert hybrid_response.status_code == 200
+        keyword_item = keyword_response.json()["items"][0]
+        assert keyword_item["citation"]["document_id"] == str(document_id)
+        assert keyword_item["citation"]["section_path"] == ["Operations", "Recovery"]
+        assert keyword_item["keyword_rank"] == 1
+        assert keyword_item["vector_rank"] is None
+        assert vector_response.json()["items"][0]["vector_rank"] == 1
+        assert hybrid_response.json()["items"][0]["citation"]["original_filename"] == (
+            "operations.md"
+        )
+        filtered_response = client.get(
+            "/api/v1/search",
+            params={
+                "q": "monthly recovery",
+                "mode": "hybrid",
+                "media_type": "application/pdf",
+            },
+        )
+        blank_response = client.get("/api/v1/search", params={"q": " "})
+        assert filtered_response.status_code == 200
+        assert filtered_response.json()["items"] == []
+        assert blank_response.status_code == 400
+        assert blank_response.json()["code"] == "invalid_search_query"
 
 
 def test_duplicate_upload_returns_existing_document_reference(

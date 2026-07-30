@@ -7,16 +7,20 @@ from knowledge_search.application import (
     DocumentQueries,
     DocumentSubmission,
     DocumentSubmissionService,
+    SearchExecution,
+    SearchService,
 )
 from knowledge_search.config import Settings
 from knowledge_search.domain import Document, IngestionJob
-from knowledge_search.ingestion.ports import IngestionQueue, VectorIndex
-from knowledge_search.persistence import PostgresSessionFactory
+from knowledge_search.ingestion.ports import IngestionQueue
+from knowledge_search.persistence import PostgresSearchRepository, PostgresSessionFactory
 from knowledge_search.providers import (
+    FastEmbedProvider,
     LocalDocumentStore,
     QdrantVectorIndex,
     RedisIngestionQueue,
 )
+from knowledge_search.retrieval import SearchFilters, SearchMode
 
 
 class DocumentSubmissionHandler(Protocol):
@@ -39,6 +43,17 @@ class DocumentQueryHandler(Protocol):
 
 class ReadinessProbe(Protocol):
     def is_ready(self) -> bool: ...
+
+
+class SearchHandler(Protocol):
+    def search(
+        self,
+        *,
+        query: str,
+        mode: SearchMode,
+        limit: int,
+        filters: SearchFilters,
+    ) -> SearchExecution: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +100,7 @@ class DocumentApiServices:
     queries: DocumentQueryHandler
     readiness: ReadinessService
     shutdown: Callable[[], None]
+    search: SearchHandler | None = None
 
 
 def create_document_api_services(settings: Settings) -> DocumentApiServices:
@@ -94,9 +110,14 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
         redis_url=settings.redis_url,
         queue_name=settings.ingestion_queue_name,
     )
-    vector_index: VectorIndex = QdrantVectorIndex(
+    vector_index = QdrantVectorIndex(
         url=settings.qdrant_url,
         collection_name=settings.qdrant_collection,
+    )
+    embeddings = FastEmbedProvider(
+        model_name=settings.embedding_model,
+        dimensions=settings.embedding_dimensions,
+        cache_path=settings.model_cache_path,
     )
     return DocumentApiServices(
         submissions=DocumentSubmissionService(
@@ -112,4 +133,11 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
             vector_index=vector_index,
         ),
         shutdown=sessions.dispose,
+        search=SearchService(
+            repository=PostgresSearchRepository(sessions),
+            embeddings=embeddings,
+            vector_index=vector_index,
+            candidate_multiplier=settings.retrieval_candidate_multiplier,
+            rrf_k=settings.hybrid_rrf_k,
+        ),
     )
