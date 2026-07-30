@@ -30,7 +30,7 @@
 - [x] Implement reciprocal-rank fusion and filters.
 - [x] Assemble document, section, page, and chunk citations.
 - [ ] Add revision-aware query and result caching.
-- [ ] Add disabled and locally hosted answer-generation adapters.
+- [x] Add disabled and configurable HTTP answer-generation adapters.
 
 ## Interface and evaluation
 

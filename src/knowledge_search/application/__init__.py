@@ -1,5 +1,6 @@
 """Application services coordinating domain and infrastructure boundaries."""
 
+from knowledge_search.application.answers import AnswerExecution, AnswerService
 from knowledge_search.application.documents import (
     DocumentQueries,
     DocumentSubmission,
@@ -8,6 +9,8 @@ from knowledge_search.application.documents import (
 from knowledge_search.application.search import SearchExecution, SearchService
 
 __all__ = [
+    "AnswerExecution",
+    "AnswerService",
     "DocumentQueries",
     "DocumentSubmission",
     "DocumentSubmissionService",

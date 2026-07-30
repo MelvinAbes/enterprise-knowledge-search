@@ -49,3 +49,14 @@ def test_settings_reject_chunk_overlap_equal_to_size() -> None:
                 "chunk_overlap_tokens": 100,
             }
         )
+
+
+def test_settings_reject_invalid_answer_provider_url() -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate(
+            {
+                "database_url": VALID_DATABASE_URL,
+                "redis_url": VALID_REDIS_URL,
+                "answer_base_url": "local-model",
+            }
+        )

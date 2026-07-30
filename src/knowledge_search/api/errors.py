@@ -10,6 +10,7 @@ from knowledge_search.application.errors import (
     DuplicateDocumentError,
     IngestionJobNotFoundError,
 )
+from knowledge_search.generation import GenerationError
 from knowledge_search.ingestion.errors import (
     EmbeddingError,
     IngestionError,
@@ -29,6 +30,7 @@ def register_error_handlers(application: FastAPI) -> None:
     application.add_exception_handler(EmbeddingError, _retrieval_unavailable)
     application.add_exception_handler(VectorIndexError, _retrieval_unavailable)
     application.add_exception_handler(SearchQueryError, _search_query_error)
+    application.add_exception_handler(GenerationError, _generation_unavailable)
     application.add_exception_handler(RequestValidationError, _validation_error)
 
 
@@ -155,6 +157,17 @@ async def _search_query_error(request: Request, error: Exception) -> JSONRespons
         title="Search query rejected",
         detail=str(error),
         code="invalid_search_query",
+    )
+
+
+async def _generation_unavailable(request: Request, error: Exception) -> JSONResponse:
+    assert isinstance(error, GenerationError)
+    return _problem_response(
+        request=request,
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        title="Answer provider unavailable",
+        detail="Answer generation failed; document search remains available.",
+        code="generation_unavailable",
     )
 
 

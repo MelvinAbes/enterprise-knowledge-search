@@ -2,12 +2,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 ChunkingStrategyName = Literal["fixed_window", "section_aware"]
+AnswerProviderName = Literal["disabled", "chat_http"]
 
 
 class Settings(BaseSettings):
@@ -41,6 +42,11 @@ class Settings(BaseSettings):
     model_cache_path: Path = Path("model-cache")
     retrieval_candidate_multiplier: int = Field(default=4, ge=1, le=20)
     hybrid_rrf_k: int = Field(default=60, ge=1, le=1_000)
+    answer_provider: AnswerProviderName = "disabled"
+    answer_base_url: AnyHttpUrl = AnyHttpUrl("http://127.0.0.1:11434/v1")
+    answer_model: str = Field(default="qwen2.5:3b", min_length=1)
+    answer_api_token: SecretStr | None = None
+    answer_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
 
     @field_validator("database_url")
     @classmethod

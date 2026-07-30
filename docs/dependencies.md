@@ -8,6 +8,7 @@ The application is licensed under Apache-2.0. Exact package versions will be rec
 | Dependency | Purpose | Licence consideration |
 | --- | --- | --- |
 | FastAPI and Pydantic | HTTP API and validation | MIT |
+| HTTPX | Optional answer-provider HTTP client | BSD-3-Clause |
 | Uvicorn | ASGI server | BSD-3-Clause |
 | SQLAlchemy and Alembic | Persistence and migrations | MIT |
 | Psycopg | PostgreSQL driver | LGPL-3.0-only |

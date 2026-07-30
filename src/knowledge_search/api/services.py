@@ -4,6 +4,8 @@ from typing import BinaryIO, Protocol
 from uuid import UUID
 
 from knowledge_search.application import (
+    AnswerExecution,
+    AnswerService,
     DocumentQueries,
     DocumentSubmission,
     DocumentSubmissionService,
@@ -12,6 +14,11 @@ from knowledge_search.application import (
 )
 from knowledge_search.config import Settings
 from knowledge_search.domain import Document, IngestionJob
+from knowledge_search.generation import (
+    ChatCompletionsAnswerGenerator,
+    DisabledAnswerGenerator,
+)
+from knowledge_search.generation.ports import AnswerGenerator
 from knowledge_search.ingestion.ports import IngestionQueue
 from knowledge_search.persistence import PostgresSearchRepository, PostgresSessionFactory
 from knowledge_search.providers import (
@@ -54,6 +61,17 @@ class SearchHandler(Protocol):
         limit: int,
         filters: SearchFilters,
     ) -> SearchExecution: ...
+
+
+class AnswerHandler(Protocol):
+    def answer(
+        self,
+        *,
+        question: str,
+        mode: SearchMode,
+        limit: int,
+        filters: SearchFilters,
+    ) -> AnswerExecution: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +119,7 @@ class DocumentApiServices:
     readiness: ReadinessService
     shutdown: Callable[[], None]
     search: SearchHandler | None = None
+    answers: AnswerHandler | None = None
 
 
 def create_document_api_services(settings: Settings) -> DocumentApiServices:
@@ -119,6 +138,28 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
         dimensions=settings.embedding_dimensions,
         cache_path=settings.model_cache_path,
     )
+    search = SearchService(
+        repository=PostgresSearchRepository(sessions),
+        embeddings=embeddings,
+        vector_index=vector_index,
+        candidate_multiplier=settings.retrieval_candidate_multiplier,
+        rrf_k=settings.hybrid_rrf_k,
+    )
+    generator: AnswerGenerator
+    if settings.answer_provider == "disabled":
+        generator = DisabledAnswerGenerator()
+    else:
+        token = (
+            settings.answer_api_token.get_secret_value()
+            if settings.answer_api_token is not None
+            else None
+        )
+        generator = ChatCompletionsAnswerGenerator(
+            base_url=str(settings.answer_base_url),
+            model=settings.answer_model,
+            api_token=token or None,
+            timeout_seconds=settings.answer_timeout_seconds,
+        )
     return DocumentApiServices(
         submissions=DocumentSubmissionService(
             sessions=sessions,
@@ -133,11 +174,6 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
             vector_index=vector_index,
         ),
         shutdown=sessions.dispose,
-        search=SearchService(
-            repository=PostgresSearchRepository(sessions),
-            embeddings=embeddings,
-            vector_index=vector_index,
-            candidate_multiplier=settings.retrieval_candidate_multiplier,
-            rrf_k=settings.hybrid_rrf_k,
-        ),
+        search=search,
+        answers=AnswerService(search=search, generator=generator),
     )

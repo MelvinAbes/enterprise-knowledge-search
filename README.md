@@ -18,7 +18,8 @@ content, and queues ingestion through Redis. A worker extracts and normalizes co
 the configured chunking strategy, generates local embeddings, writes vectors to Qdrant, and
 stores citation metadata and lexical-search vectors in PostgreSQL. Document and job status
 endpoints expose each lifecycle transition. Keyword, vector, and hybrid search return source
-citations. Answer generation and the user interface remain in progress.
+citations. A disabled-by-default answer endpoint can call a configured chat-completions HTTP
+service while preserving the underlying sources. The user interface remains in progress.
 
 ## Architecture
 
@@ -171,6 +172,19 @@ Use `mode=keyword` to search without loading the embedding model. Results contai
 document, chunk, section path, page number when available, and the ranks contributed by each
 retriever.
 
+Ask a question while generation is disabled:
+
+```bash
+curl --request POST \
+  --url http://127.0.0.1:8000/api/v1/answers \
+  --header 'Content-Type: application/json' \
+  --data '{"question":"How long are backups retained?","mode":"hybrid","limit":5}'
+```
+
+The response contains `generation_status: "disabled"`, a null answer, and the retrieved
+sources. Set `EKS_ANSWER_PROVIDER=chat_http` to use a compatible local or remote service.
+`EKS_ANSWER_API_TOKEN` is optional and must remain outside version control.
+
 ## Technology and design decisions
 
 - FastAPI and Pydantic provide typed HTTP and configuration boundaries.
@@ -185,11 +199,12 @@ The detailed design is in [docs/architecture.md](docs/architecture.md), with tra
 
 ## Limitations
 
-The application does not yet expose deletion or answer-generation endpoints. It supports
+The application does not yet expose deletion or browser-interface workflows. It supports
 text-based PDFs only, uses an English-focused local embedding model, stores uploaded files
 locally, and operates as a single workspace without authentication. A failure while initially
 dispatching a job is retained for diagnosis but currently requires operator intervention to
-requeue. Retrieval quality has not yet been evaluated against the planned relevance dataset.
+requeue. Retrieval and generated-answer quality have not yet been evaluated against the
+planned relevance dataset.
 
 ## Roadmap
 

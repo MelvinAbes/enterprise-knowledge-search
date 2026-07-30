@@ -14,6 +14,7 @@ from knowledge_search.api.services import (
     ReadinessService,
 )
 from knowledge_search.application import (
+    AnswerService,
     DocumentQueries,
     DocumentSubmissionService,
     SearchService,
@@ -21,6 +22,7 @@ from knowledge_search.application import (
 from knowledge_search.application.ingestion import IngestionJobProcessor
 from knowledge_search.config import Settings
 from knowledge_search.domain import Chunk, Document, DocumentStatus, IngestionJobStatus
+from knowledge_search.generation import DisabledAnswerGenerator
 from knowledge_search.ingestion import (
     DocumentContentPreparer,
     DocumentExtractorRegistry,
@@ -160,6 +162,17 @@ def _api_client(
     search_vector_index: RecordingVectorIndex | None = None,
 ) -> Iterator[tuple[TestClient, PostgresSessionFactory]]:
     sessions = PostgresSessionFactory(SecretStr(database_url))
+    search_service = (
+        SearchService(
+            repository=PostgresSearchRepository(sessions),
+            embeddings=DeterministicEmbeddings(),
+            vector_index=search_vector_index,
+            candidate_multiplier=4,
+            rrf_k=60,
+        )
+        if search_vector_index is not None
+        else None
+    )
     submissions = DocumentSubmissionService(
         sessions=sessions,
         store=LocalDocumentStore(storage_path),
@@ -175,15 +188,13 @@ def _api_client(
             vector_index=RecordingVectorIndex(),
         ),
         shutdown=sessions.dispose,
-        search=(
-            SearchService(
-                repository=PostgresSearchRepository(sessions),
-                embeddings=DeterministicEmbeddings(),
-                vector_index=search_vector_index,
-                candidate_multiplier=4,
-                rrf_k=60,
+        search=search_service,
+        answers=(
+            AnswerService(
+                search=search_service,
+                generator=DisabledAnswerGenerator(),
             )
-            if search_vector_index is not None
+            if search_service is not None
             else None
         ),
     )
@@ -302,6 +313,19 @@ def test_upload_worker_and_status_endpoints_complete_document_ingestion(
         assert filtered_response.json()["items"] == []
         assert blank_response.status_code == 400
         assert blank_response.json()["code"] == "invalid_search_query"
+
+        answer_response = client.post(
+            "/api/v1/answers",
+            json={
+                "question": "How often are recovery exercises completed?",
+                "mode": "hybrid",
+                "limit": 2,
+            },
+        )
+        assert answer_response.status_code == 200
+        assert answer_response.json()["answer"] is None
+        assert answer_response.json()["generation_status"] == "disabled"
+        assert answer_response.json()["sources"]
 
 
 def test_duplicate_upload_returns_existing_document_reference(

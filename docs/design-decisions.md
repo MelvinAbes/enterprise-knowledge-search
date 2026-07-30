@@ -43,8 +43,11 @@ quality.
 ## Optional answer generation
 
 Retrieval and citations form the core product. Answer generation is a separate application
-service and is disabled by default. The first optional adapter will target a locally hosted
-model service. A generation outage must not prevent document search.
+service and is disabled by default. The optional adapter targets a configurable
+chat-completions HTTP service, so the same boundary can reach a local server or an explicitly
+configured remote provider. Evidence is numbered and treated as untrusted data, and the API
+returns the retrieved sources alongside any answer. A generation outage does not prevent use
+of the search endpoint.
 
 ## Minimal server-rendered interface
 
