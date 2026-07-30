@@ -15,6 +15,7 @@ from knowledge_search.api.services import (
 )
 from knowledge_search.application import (
     AnswerService,
+    DocumentDeletionService,
     DocumentQueries,
     DocumentSubmissionService,
     SearchService,
@@ -173,12 +174,14 @@ def _api_client(
         if search_vector_index is not None
         else None
     )
+    store = LocalDocumentStore(storage_path)
     submissions = DocumentSubmissionService(
         sessions=sessions,
-        store=LocalDocumentStore(storage_path),
+        store=store,
         queue=queue,
         max_upload_bytes=4_096,
     )
+    deletion_vector_index = search_vector_index or RecordingVectorIndex()
     services = DocumentApiServices(
         submissions=submissions,
         queries=DocumentQueries(sessions),
@@ -196,6 +199,11 @@ def _api_client(
             )
             if search_service is not None
             else None
+        ),
+        deletions=DocumentDeletionService(
+            sessions=sessions,
+            store=store,
+            vector_index=deletion_vector_index,
         ),
     )
     settings = Settings(
@@ -326,6 +334,47 @@ def test_upload_worker_and_status_endpoints_complete_document_ingestion(
         assert answer_response.json()["answer"] is None
         assert answer_response.json()["generation_status"] == "disabled"
         assert answer_response.json()["sources"]
+
+        delete_response = client.delete(f"/api/v1/documents/{document_id}")
+        assert delete_response.status_code == 204
+        assert client.get(f"/api/v1/documents/{document_id}").status_code == 404
+        assert (
+            client.get(
+                "/api/v1/search",
+                params={"q": "monthly recovery", "mode": "keyword"},
+            ).json()["items"]
+            == []
+        )
+        assert vector_index.points == {}
+        assert list(tmp_path.glob("*/source.md")) == []
+        with sessions.transaction() as session:
+            deletion_revision = session.get(CorpusRevisionRecord, 1)
+        assert deletion_revision is not None
+        assert deletion_revision.revision == 2
+
+
+def test_queued_document_cannot_be_deleted(
+    migrated_database_url: str,
+    tmp_path: Path,
+) -> None:
+    queue = RecordingQueue()
+
+    with _api_client(
+        database_url=migrated_database_url,
+        storage_path=tmp_path,
+        queue=queue,
+    ) as (client, _):
+        upload = client.post(
+            "/api/v1/documents",
+            files={"document": ("policy.txt", b"Retain backups.", "text/plain")},
+        )
+        document_id = upload.json()["document"]["id"]
+
+        response = client.delete(f"/api/v1/documents/{document_id}")
+
+        assert response.status_code == 409
+        assert response.json()["code"] == "document_deletion_conflict"
+        assert response.json()["extensions"]["document_status"] == "queued"
 
 
 def test_duplicate_upload_returns_existing_document_reference(

@@ -57,6 +57,16 @@ def test_ready_document_cannot_return_to_processing() -> None:
         document.start_processing()
 
 
+def test_ready_document_can_enter_terminal_deleting_state() -> None:
+    document = create_document().queue().start_processing().mark_ready()
+
+    deleting = document.mark_deleting()
+
+    assert deleting.status is DocumentStatus.DELETING
+    with pytest.raises(InvalidStateTransitionError):
+        deleting.queue()
+
+
 def test_failed_document_can_be_requeued_without_failure_code() -> None:
     document = create_document().queue().mark_failed("unsupported_encoding")
 

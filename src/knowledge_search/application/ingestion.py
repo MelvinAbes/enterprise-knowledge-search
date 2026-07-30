@@ -94,6 +94,8 @@ class IngestionJobProcessor:
             document = document_repository.get(job.document_id)
             if document is None:
                 raise DocumentNotFoundError(job.document_id)
+            if document.status is DocumentStatus.DELETING:
+                return None
 
             if (
                 job.status is IngestionJobStatus.SUCCEEDED

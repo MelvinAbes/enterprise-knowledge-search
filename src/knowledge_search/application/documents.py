@@ -6,6 +6,8 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import IntegrityError
 
 from knowledge_search.application.errors import (
+    DocumentCleanupError,
+    DocumentDeletionConflictError,
     DocumentNotFoundError,
     DuplicateDocumentError,
     IngestionJobNotFoundError,
@@ -13,16 +15,19 @@ from knowledge_search.application.errors import (
 from knowledge_search.domain import (
     Document,
     DocumentMediaType,
+    DocumentStatus,
     IngestionJob,
 )
 from knowledge_search.ingestion.errors import (
     IngestionError,
     IngestionErrorCode,
     QueueDispatchError,
+    VectorIndexError,
 )
-from knowledge_search.ingestion.ports import DocumentStore, IngestionQueue
+from knowledge_search.ingestion.ports import DocumentStore, IngestionQueue, VectorIndex
 from knowledge_search.persistence import (
     PostgresSessionFactory,
+    SqlAlchemyCorpusRevisionRepository,
     SqlAlchemyDocumentRepository,
     SqlAlchemyIngestionJobRepository,
 )
@@ -144,6 +149,50 @@ class DocumentQueries:
         if job is None:
             raise IngestionJobNotFoundError(job_id)
         return job
+
+
+class DocumentDeletionService:
+    def __init__(
+        self,
+        *,
+        sessions: PostgresSessionFactory,
+        store: DocumentStore,
+        vector_index: VectorIndex,
+    ) -> None:
+        self._sessions = sessions
+        self._store = store
+        self._vector_index = vector_index
+
+    def delete(self, document_id: UUID) -> None:
+        with self._sessions.transaction() as session:
+            repository = SqlAlchemyDocumentRepository(session)
+            document = repository.get(document_id)
+            if document is None:
+                raise DocumentNotFoundError(document_id)
+            if document.status is not DocumentStatus.DELETING:
+                if document.status not in {
+                    DocumentStatus.READY,
+                    DocumentStatus.FAILED,
+                }:
+                    raise DocumentDeletionConflictError(
+                        document.id,
+                        document.status.value,
+                    )
+                document = document.mark_deleting()
+                repository.save(document)
+                SqlAlchemyCorpusRevisionRepository(session).increment()
+
+        try:
+            self._vector_index.delete_document(document.id)
+        except VectorIndexError as error:
+            raise DocumentCleanupError("Vector document cleanup failed.") from error
+        try:
+            self._store.delete(document.storage_key)
+        except OSError as error:
+            raise DocumentCleanupError("Stored document cleanup failed.") from error
+
+        with self._sessions.transaction() as session:
+            SqlAlchemyDocumentRepository(session).delete(document.id)
 
 
 def _validate_filename(filename: str) -> str:

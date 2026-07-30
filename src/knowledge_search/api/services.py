@@ -6,6 +6,7 @@ from uuid import UUID
 from knowledge_search.application import (
     AnswerExecution,
     AnswerService,
+    DocumentDeletionService,
     DocumentQueries,
     DocumentSubmission,
     DocumentSubmissionService,
@@ -52,6 +53,10 @@ class DocumentQueryHandler(Protocol):
     def list_documents(self, *, offset: int, limit: int) -> list[Document]: ...
 
     def get_job(self, job_id: UUID) -> IngestionJob: ...
+
+
+class DocumentDeletionHandler(Protocol):
+    def delete(self, document_id: UUID) -> None: ...
 
 
 class ReadinessProbe(Protocol):
@@ -126,6 +131,7 @@ class DocumentApiServices:
     shutdown: Callable[[], None]
     search: SearchHandler | None = None
     answers: AnswerHandler | None = None
+    deletions: DocumentDeletionHandler | None = None
 
 
 def create_document_api_services(settings: Settings) -> DocumentApiServices:
@@ -188,4 +194,9 @@ def create_document_api_services(settings: Settings) -> DocumentApiServices:
         shutdown=sessions.dispose,
         search=search,
         answers=AnswerService(search=search, generator=generator),
+        deletions=DocumentDeletionService(
+            sessions=sessions,
+            store=store,
+            vector_index=vector_index,
+        ),
     )

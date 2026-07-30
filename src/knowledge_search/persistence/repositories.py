@@ -58,6 +58,11 @@ class SqlAlchemyDocumentRepository:
         record.failure_code = document.failure_code
         record.updated_at = document.updated_at
 
+    def delete(self, document_id: UUID) -> None:
+        record = self._session.get(DocumentRecord, document_id)
+        if record is not None:
+            self._session.delete(record)
+
 
 class SqlAlchemyChunkRepository:
     def __init__(self, session: Session) -> None:

@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 
 from knowledge_search.api.schemas.problems import ProblemDetails
 from knowledge_search.application.errors import (
+    DocumentCleanupError,
+    DocumentDeletionConflictError,
     DocumentNotFoundError,
     DuplicateDocumentError,
     IngestionJobNotFoundError,
@@ -31,6 +33,11 @@ def register_error_handlers(application: FastAPI) -> None:
     application.add_exception_handler(VectorIndexError, _retrieval_unavailable)
     application.add_exception_handler(SearchQueryError, _search_query_error)
     application.add_exception_handler(GenerationError, _generation_unavailable)
+    application.add_exception_handler(
+        DocumentDeletionConflictError,
+        _document_deletion_conflict,
+    )
+    application.add_exception_handler(DocumentCleanupError, _document_cleanup_failed)
     application.add_exception_handler(RequestValidationError, _validation_error)
 
 
@@ -168,6 +175,36 @@ async def _generation_unavailable(request: Request, error: Exception) -> JSONRes
         title="Answer provider unavailable",
         detail="Answer generation failed; document search remains available.",
         code="generation_unavailable",
+    )
+
+
+async def _document_deletion_conflict(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    assert isinstance(error, DocumentDeletionConflictError)
+    return _problem_response(
+        request=request,
+        status_code=status.HTTP_409_CONFLICT,
+        title="Document deletion conflict",
+        detail=str(error),
+        code="document_deletion_conflict",
+        extensions={"document_status": error.status},
+    )
+
+
+async def _document_cleanup_failed(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    assert isinstance(error, DocumentCleanupError)
+    return _problem_response(
+        request=request,
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        title="Document cleanup incomplete",
+        detail="The document is unavailable to search, but cleanup must be retried.",
+        code="document_cleanup_incomplete",
+        headers={"Retry-After": "5"},
     )
 
 

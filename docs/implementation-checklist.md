@@ -22,6 +22,7 @@
 - [x] Queue jobs using identifier-only JSON payloads.
 - [x] Add deterministic chunk identifiers and idempotent lifecycle transitions.
 - [x] Generate local embeddings and upsert Qdrant points.
+- [x] Add recoverable document deletion across relational, vector, and file storage.
 
 ## Retrieval and answers
 

@@ -28,6 +28,7 @@ class DocumentStatus(StrEnum):
     PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
+    DELETING = "deleting"
 
 
 class IngestionJobStatus(StrEnum):
@@ -41,8 +42,9 @@ DOCUMENT_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
     DocumentStatus.UPLOADED: frozenset({DocumentStatus.QUEUED}),
     DocumentStatus.QUEUED: frozenset({DocumentStatus.PROCESSING, DocumentStatus.FAILED}),
     DocumentStatus.PROCESSING: frozenset({DocumentStatus.READY, DocumentStatus.FAILED}),
-    DocumentStatus.READY: frozenset(),
-    DocumentStatus.FAILED: frozenset({DocumentStatus.QUEUED}),
+    DocumentStatus.READY: frozenset({DocumentStatus.DELETING}),
+    DocumentStatus.FAILED: frozenset({DocumentStatus.QUEUED, DocumentStatus.DELETING}),
+    DocumentStatus.DELETING: frozenset(),
 }
 
 JOB_TRANSITIONS: dict[IngestionJobStatus, frozenset[IngestionJobStatus]] = {
@@ -155,6 +157,9 @@ class Document:
         if not failure_code.strip():
             raise DomainValidationError("failure code must not be blank")
         return self._transition(DocumentStatus.FAILED, now=now, failure_code=failure_code)
+
+    def mark_deleting(self, *, now: datetime | None = None) -> "Document":
+        return self._transition(DocumentStatus.DELETING, now=now)
 
     def _transition(
         self,

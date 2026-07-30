@@ -2,6 +2,7 @@
 
 from knowledge_search.application.answers import AnswerExecution, AnswerService
 from knowledge_search.application.documents import (
+    DocumentDeletionService,
     DocumentQueries,
     DocumentSubmission,
     DocumentSubmissionService,
@@ -11,6 +12,7 @@ from knowledge_search.application.search import SearchExecution, SearchService
 __all__ = [
     "AnswerExecution",
     "AnswerService",
+    "DocumentDeletionService",
     "DocumentQueries",
     "DocumentSubmission",
     "DocumentSubmissionService",

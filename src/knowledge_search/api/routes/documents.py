@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, File, Query, Request, UploadFile, status
+from fastapi import APIRouter, File, Query, Request, Response, UploadFile, status
 
 from knowledge_search.api.schemas.documents import (
     DocumentListResponse,
@@ -60,6 +60,18 @@ def list_documents(
 def get_document(request: Request, document_id: UUID) -> DocumentResponse:
     document = _services(request).queries.get_document(document_id)
     return DocumentResponse.from_domain(document)
+
+
+@router.delete(
+    "/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_document(request: Request, document_id: UUID) -> Response:
+    services = _services(request)
+    if services.deletions is None:
+        raise RuntimeError("document deletion service is not configured")
+    services.deletions.delete(document_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/ingestion-jobs/{job_id}", response_model=IngestionJobResponse)

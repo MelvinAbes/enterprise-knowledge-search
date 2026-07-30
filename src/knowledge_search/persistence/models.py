@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-DOCUMENT_STATUS_VALUES: Final = "'uploaded', 'queued', 'processing', 'ready', 'failed'"
+DOCUMENT_STATUS_VALUES: Final = "'uploaded', 'queued', 'processing', 'ready', 'failed', 'deleting'"
 JOB_STATUS_VALUES: Final = "'queued', 'running', 'succeeded', 'failed'"
 
 

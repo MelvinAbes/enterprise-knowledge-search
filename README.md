@@ -21,7 +21,8 @@ endpoints expose each lifecycle transition. Keyword, vector, and hybrid search r
 citations. A disabled-by-default answer endpoint can call a configured chat-completions HTTP
 service while preserving the underlying sources. Search responses are cached in Redis against
 the current corpus revision, and the API exposes structured request logs, correlation IDs, and
-Prometheus metrics. The user interface remains in progress.
+Prometheus metrics. Recoverable deletion removes vectors, stored files, and relational
+metadata. The user interface remains in progress.
 
 ## Architecture
 
@@ -196,6 +197,16 @@ curl http://127.0.0.1:8000/metrics
 Every API response includes an `X-Request-ID`. A valid UUID supplied in the same request header
 is preserved, which makes it possible to correlate a client operation with the structured log
 event without logging query strings or document contents.
+
+Delete a ready or failed document:
+
+```bash
+curl --request DELETE \
+  http://127.0.0.1:8000/api/v1/documents/927de0ef-4454-4742-91d5-d8d46d5b604a
+```
+
+Deletion returns `204 No Content`. Queued and processing documents return `409 Conflict` so an
+active ingestion cannot be removed underneath its worker.
 
 ## Technology and design decisions
 
